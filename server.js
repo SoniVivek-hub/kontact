@@ -1,27 +1,44 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+// const http=require("http")
 const io = require("socket.io")(5000, {
   cors: {
     origin: ["http://localhost:3000"],
   },
 });
+const app = express();
+
 
 let activeRooms = {};
-let socketMap = {};
+let socketMapForHost = {};
+let socketMapForPlayer = {};
 
 io.on("connection", (socket) => {
   //   console.log(socket.id);
   socket.on("game-created", (gameVars) => {
-    if (socketMap[socket.id]) {
-      socket.leave(socketMap[socket.id]);
-      delete activeRooms[socketMap[socket.id]];
-      delete socketMap[socket.id];
+    if (socketMapForPlayer[socket.id]) {
+      socket.leave(socketMapForPlayer[socket.id]);
+      console.log(activeRooms);
+        activeRooms[socketMapForPlayer[socket.id]].players = activeRooms[socketMapForPlayer[socket.id]].players.filter((player) => {
+          return player.id !== socket.id;
+        })
+        io.in(activeRooms[socketMapForPlayer[socket.id]].roomCode).emit(
+          "player-left",
+          activeRooms[socketMapForPlayer[socket.id]]
+        );
     }
+    if (socketMapForHost[socket.id]) {
+      socket.leave(socketMapForHost[socket.id]);
+      delete activeRooms[socketMapForHost[socket.id]];
+      delete socketMapForHost[socket.id];
+    }
+    
     let roomCode;
     do {
-      roomCode = Math.floor(Math.random() * 900000 + 100000);
+      roomCode = (Math.floor(Math.random() * 900000 + 100000));
     } while (roomCode in activeRooms);
-    socketMap[socket.id] = roomCode;
+    socketMapForHost[socket.id] = roomCode;
+    socketMapForPlayer[socket.id] = roomCode;
     activeRooms[roomCode] = {
       roomCode: roomCode,
       hostName: gameVars.name,
@@ -37,23 +54,49 @@ io.on("connection", (socket) => {
       ],
     };
     socket.join(roomCode);
-    console.log(activeRooms, socketMap);
+    console.log(activeRooms, socketMapForHost);
     socket.emit("game-hosted", activeRooms[roomCode]);
   });
 
   socket.on("join-room", (roomCode, name, sendAlert) => {
+    roomCode=parseInt(roomCode)
     if (activeRooms[roomCode]) {
-      socket.join(activeRooms[roomCode].roomCode);
+      if (socketMapForPlayer[socket.id]) {
+        socket.leave(activeRooms[socketMapForPlayer[socket.id]].roomCode);
+        activeRooms[socketMapForPlayer[socket.id]].players = activeRooms[socketMapForPlayer[socket.id]].players.filter((player) => {
+          return player.id !== socket.id;
+        })
+        // console.log(activeRooms[socketMapForPlayer[socket.id]].players)
+        io.in(activeRooms[socketMapForPlayer[socket.id]].roomCode).emit(
+          "player-left",
+          activeRooms[socketMapForPlayer[socket.id]]
+        );
+      }
+      if (socketMapForHost[socket.id]) {
+        socket.leave(socketMapForHost[socket.id]);
+        delete activeRooms[socketMapForHost[socket.id]];
+        delete socketMapForHost[socket.id];
+      }
+      socketMapForPlayer[socket.id] = roomCode;
+      socket.join(roomCode);
       activeRooms[roomCode].players = [
         ...activeRooms[roomCode].players,
         { name: name, id: socket.id },
       ];
-      io.in(activeRooms[roomCode].roomCode).emit(
+      io.in(roomCode).emit(
         "game-hosted",
         activeRooms[roomCode]
       );
+      
     } else {
       sendAlert();
     }
   });
 });
+
+// app.get("/", (req, res) => {
+//   res.send("working like a charm");
+// })
+// app.listen(5000, () => {
+//   console.log("server is listening on port 5000");
+// })

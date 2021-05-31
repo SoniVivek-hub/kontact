@@ -1,5 +1,4 @@
 import React,{useState} from 'react'
-import {io} from  "socket.io-client"
 
 export default function StartGame({socket}) {
     const [time, setTime] = useState(0);
