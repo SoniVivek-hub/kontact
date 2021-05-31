@@ -1,0 +1,23 @@
+{
+  "name": "contact-game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "devstart": "nodemon server.js",
+    "client": "npm start --prefix contact",
+    "dev": "concurrently \"npm run devstart\" \"npm run client\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aakstatic/Kontact.io.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/aakstatic/Kontact.io/issues"
+  },
+  "homepage": "https://github.com/aakstatic/Kontact.io#readme"
+}
