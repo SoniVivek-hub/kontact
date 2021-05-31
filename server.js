@@ -8,8 +8,9 @@ const io = require("socket.io")(5000, {
 });
 const app = express();
 
-
+//this is the active rooms with all the details and the key as the roomCode
 let activeRooms = {};
+//these are the socketmaps which map the id of the socket to the roomcode which has all the info in active rooms
 let socketMapForHost = {};
 let socketMapForPlayer = {};
 
