@@ -1,18 +1,43 @@
-import React from 'react'
+import React,{useState} from 'react'
+import {io} from  "socket.io-client"
 
-export default function StartGame() {
+export default function StartGame({socket}) {
+    const [time, setTime] = useState(0);
+    const[name,setName]=useState("");
+    const[wordLength,setWordLength]=useState("");
+    const[checkDictionaryWords,setCheckDictionaryWords]=useState(false);
+    function initaliseGame(){
+        const gameData = {
+            time: time,
+            name: name,
+            wordLength: wordLength,
+            checkDictionaryWords: checkDictionaryWords
+        };
+        socket.emit("game-created", gameData);
+    }
     return (
         <div>
-            <h1>Enter the display name</h1>
+            <div>
+                <input type="text" value={name} onChange={(e)=>{
+                    setName(e.target.value);
+                }}></input>
+                <button>Edit name</button>
+            </div>
             <div>
                 <label>Time to guess</label>
-                <input type="number"></input>
+                <input type="number" value={time} onChange={(e)=>{
+                    setTime(e.target.value);
+                }}></input>
                 <label>Total length</label>
-                <input type="number"></input>
+                <input type="number" value={wordLength} onChange={(e)=>{
+                    setWordLength(e.target.value);
+                }}></input>
             </div>
-            <input type="radio"></input>
+            <input type="radio" value={checkDictionaryWords} onChange={(e)=>{
+                    setCheckDictionaryWords(e.target.value);
+                }}></input>
             <label>Check for dictionary words</label>
-            <buton>Create Game</buton>
+            <button onClick={initaliseGame}>Create Game</button>
         </div>
     )
 }
