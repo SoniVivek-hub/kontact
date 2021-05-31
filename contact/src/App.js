@@ -3,9 +3,9 @@ import InputPagePlayers from "./components/InputPagePlayers";
 import RoomPlayer from "./components/RoomPlayer";
 import StartGame from "./components/StartGame";
 import {io} from "socket.io-client"
+const socket=io.connect("http://localhost:5000");
 
 function App() {
-  const socket=io("http://localhost:5000");
   
   return (
     <div className="App">

@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { socket } from "socket.io";
+import React, { useState,useEffect } from "react";
 
 export default function InputPagePlayers({ socket }) {
   function joinRoom() {
