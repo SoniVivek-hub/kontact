@@ -3,7 +3,7 @@ import React, { useState,useEffect } from "react";
 export default function InputPagePlayers({ socket }) {
   function joinRoom() {
     console.log("ppp");
-    socket.emit("join-room", roomCode, name, () => {
+    socket.emit("player-joined", roomCode, name, () => {
       alert("the room code is invalid");
     });
   }
