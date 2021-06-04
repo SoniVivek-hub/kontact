@@ -3,27 +3,50 @@ import React, { useEffect, useState } from "react";
 export default function RoomPlayer({ socket }) {
   const [gameData, setGameData] = useState({});
   useEffect(() => {
-    socket.once("game-hosted", (gameData) => {
+    socket.on("game-hosted", (gameData) => {
       console.log(gameData);
       setGameData(gameData);
     });
+    return () => {
+      socket.off("game-hosted");
+    };
   });
   useEffect(() => {
-    socket.once("players-update", (gameData) => {
+    socket.on("players-update", (gameData) => {
       console.log(gameData);
       setGameData(gameData);
+      return () => {
+        socket.off("players-update");
+      };
     });
   });
   useEffect(() => {
-    socket.once("player-is-kicked", () => {
+    socket.on("player-is-kicked", () => {
       alert("you were kicked");
+    });
+    return () => {
+      socket.off("player-is-kicked");
+    };
+  });
+  useEffect(() => {
+    socket.on("send-alert-for-game-started", () => {
+      alert("the host has started the game");
+    });
+    return () => {
+      socket.off("send-alert-for-game-started");
+    };
+  });
+  useEffect(() => {
+    socket.on("clear-data", () => {
       setGameData({});
     });
+    return () => {
+      socket.off("clear-data");
+    };
   });
   function leaveRoom() {
     socket.emit("player-left", () => {
       alert("left successfully");
-      setGameData({});
     });
   }
   function kickPlayer(playerId) {
@@ -33,7 +56,9 @@ export default function RoomPlayer({ socket }) {
   function makeGameMaster(playerId) {
     socket.emit("make-gamemaster", playerId);
   }
-
+  function startGame() {
+    socket.emit("start-game");
+  }
   return (
     <div>
       <h1>Room Code</h1>
@@ -73,8 +98,14 @@ export default function RoomPlayer({ socket }) {
             );
           })}
       </div>
-      <button>Waiting for host to start the game</button>
-      <button onClick={leaveRoom}>Leave Room</button>
+      {gameData.players && gameData.players[0].id !== socket.id ? (
+        <button disabled>Waiting for host to start the game</button>
+      ) : null}
+      {gameData.players && gameData.players[0].id === socket.id ? (
+        <button onClick={startGame}>Start game</button>
+      ) : null}
+
+      {gameData.players && <button onClick={leaveRoom}>Leave Room</button>}
     </div>
   );
 }

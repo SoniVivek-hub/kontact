@@ -1,7 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const { instrument } = require("@socket.io/admin-ui");
-// const http=require("http")
+const checkWord = require("check-word");
+const words = checkWord("en");
 const io = require("socket.io")(5000, {
   cors: {
     origin: ["http://localhost:3000", "https://admin.socket.io"],
@@ -12,16 +13,37 @@ const app = express();
 //this is the active rooms with all the details and the key as the roomCode
 
 let activeRooms = {};
-//these are the socketmaps which map the id of the socket to the roomcode which has all the info in active rooms
+
+
+// let activeGames={
+//   roomcode:{
+//     gameMasterWord:,
+//     roundTime:,
+//     checkForDictionary:,
+//     wordLength:,
+//     revealedWord:,
+//     guessedWords:,
+//     currContactData:{
+//       contactWord:,
+//       clue:,
+//       thisContactTime:,
+//       otherPlayerGuesses: [{name:,playerId:,guess:}],
+//       gameMasterGuesses: [],
+//     }
+//   }
+// }
+
+let activeGames = {};
 let socketMapForHost = {};
 let socketMapForPlayer = {};
+let playerNames = {};
 
-const removePlayer = async (playerId) => {
-  console.log(`The player : ${playerId}`);
-  const sockets = await io.in(playerId).fetchSockets();
-  console.log(sockets);
-  sockets[0].leave(socketMapForPlayer[playerId]);
-  // console.log(activeRooms);
+const removePlayer = async ({ playerId, socket }) => {
+  if (socket === null || socket === undefined) {
+    const sockets = await io.in(playerId).fetchSockets();
+    socket = sockets[0];
+  }
+  socket.leave(socketMapForPlayer[playerId]);
   activeRooms[socketMapForPlayer[playerId]].players = activeRooms[
     socketMapForPlayer[playerId]
   ].players.filter((player) => {
@@ -35,6 +57,7 @@ const removePlayer = async (playerId) => {
       activeRooms[socketMapForPlayer[playerId]]
     );
   }
+  socket.emit("clear-data");
   delete socketMapForPlayer[playerId];
 };
 
@@ -42,7 +65,7 @@ io.on("connection", (socket) => {
   //   console.log(socket.id);
   socket.on("game-created", (gameVars) => {
     if (socketMapForPlayer[socket.id]) {
-      removePlayer(socket.id);
+      removePlayer({ playerId: socket.id, socket: socket });
     }
     // if (socketMapForHost[socket.id]) {
     //   socket.leave(socketMapForHost[socket.id]);
@@ -54,16 +77,15 @@ io.on("connection", (socket) => {
     do {
       roomCode = Math.floor(Math.random() * 900000 + 100000);
     } while (roomCode in activeRooms);
-    // socketMapForHost[socket.id] = roomCode;
     socketMapForPlayer[socket.id] = roomCode;
+    playerNames[socket.id] = gameVars.name;
     activeRooms[roomCode] = {
       roomCode: roomCode,
-      // hostName: gameVars.name,
-      // hostId: socket.id,
       gameMasterId: socket.id,
       time: gameVars.time,
       wordLength: gameVars.wordLength,
-      checkDictWords: gameVars.checkDictionaryWords,
+      gameStarted: false,
+      checkDictionaryWords: gameVars.checkDictionaryWords,
       players: [
         {
           name: gameVars.name,
@@ -72,21 +94,18 @@ io.on("connection", (socket) => {
       ],
     };
     socket.join(roomCode);
-    console.log(activeRooms, socketMapForHost);
     socket.emit("game-hosted", activeRooms[roomCode]);
   });
 
   socket.on("player-joined", (roomCode, name, sendAlert) => {
     roomCode = parseInt(roomCode);
-    if (activeRooms[roomCode]) {
+    if (activeRooms[roomCode] && activeRooms[roomCode].gameStarted) {
+      sendAlert("Game has already start,Please wait for it to finish.");
+    } else if (activeRooms[roomCode]) {
       if (socketMapForPlayer[socket.id]) {
-        removePlayer(socket.id);
+        removePlayer({ playerId: socket.id, socket: socket });
       }
-      // if (socketMapForHost[socket.id]) {
-      //   socket.leave(socketMapForHost[socket.id]);
-      //   delete activeRooms[socketMapForHost[socket.id]];
-      //   delete socketMapForHost[socket.id];
-      // }
+      playerNames[socket.id] = name;
       socketMapForPlayer[socket.id] = roomCode;
       socket.join(roomCode);
       activeRooms[roomCode].players = [
@@ -95,19 +114,34 @@ io.on("connection", (socket) => {
       ];
       io.in(roomCode).emit("game-hosted", activeRooms[roomCode]);
     } else {
-      sendAlert();
+      sendAlert("The room code is invalid");
     }
   });
-
-  socket.on("player-left", (alertPlayer) => {
-    if (activeRooms[socketMapForPlayer[socket.id]].gameMasterId === socket.id) {
-      activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
-        activeRooms[socketMapForPlayer[socket.id]].players[0].id;
-    }
-    removePlayer(socket.id);
-    alertPlayer();
+  const events = ["player-left"];
+  events.forEach((event) => {
+    socket.on(event, () => {
+      // console.log(socket.id);
+      if (
+        // activeRooms[socketMapForPlayer[socket.id]].gameMasterId === socket.id
+        true
+      ) {
+        if (
+          activeRooms[socketMapForPlayer[socket.id]].players[0].id === socket.id
+        ) {
+          if (activeRooms[socketMapForPlayer[socket.id]].players.size > 1) {
+            activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
+              activeRooms[socketMapForPlayer[socket.id]].players[1].id;
+          }
+        } else {
+          activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
+            activeRooms[socketMapForPlayer[socket.id]].players[0].id;
+        }
+      }
+      removePlayer({ playerId: socket.id, socket: socket });
+      console.log("player left");
+      // if (event === "player-left") alertPlayer();
+    });
   });
-
   socket.on("kick-player", async (playerId) => {
     if (activeRooms[socketMapForPlayer[playerId]].gameMasterId === playerId) {
       activeRooms[socketMapForPlayer[playerId]].gameMasterId =
@@ -115,7 +149,7 @@ io.on("connection", (socket) => {
     }
     const sockets = await io.in(playerId).fetchSockets();
     sockets[0].emit("player-is-kicked");
-    removePlayer(playerId);
+    removePlayer({ playerId: playerId, socket: null });
   });
 
   socket.on("make-gamemaster", (playerId) => {
@@ -125,13 +159,127 @@ io.on("connection", (socket) => {
       activeRooms[socketMapForPlayer[playerId]]
     );
   });
+
+  socket.on("start-game", (sendAlert) => {
+    activeRooms[socketMapForPlayer[socket.id]].gameStarted = true;
+    activeGames[socketMapForPlayer[socket.id]] = {
+      roundTime: activeRooms[socketMapForPlayer[socket.id]].time,
+      checkDictionaryWords:
+        activeRooms[socketMapForPlayer[socket.id]].checkDictionaryWords,
+      wordLength: activeRooms[socketMapForPlayer[socket.id]].wordLength,
+    };
+    console.log(activeGames);
+    io.in(socketMapForPlayer[socket.id]).emit("send-alert-for-game-started");
+  });
+
+  socket.on("secret-word", (secretWord, sendAlert) => {
+    console.log(`Secret word : ${secretWord}`);
+    console.log(activeGames);
+    console.log(
+      activeGames[socketMapForPlayer[socket.id]].wordLength,
+      secretWord.length
+    );
+    if (
+      secretWord.length >
+      parseInt(activeGames[socketMapForPlayer[socket.id]].wordLength)
+    ) {
+      sendAlert("The word exceeds the maximum word length!");
+    } else if (
+      activeGames[socketMapForPlayer[socket.id]].checkDictionaryWords &&
+      !words.check(secretWord)
+    ) {
+      //check if dictionary if not sendAlert() for the mistake
+      sendAlert(
+        "The word is not a dictionary word! Please use only dictionary words"
+      );
+    } else {
+      activeGames[socketMapForPlayer[socket.id]].gameMasterWord = secretWord;
+      activeGames[socketMapForPlayer[socket.id]].revealedWord =
+        secretWord.substr(0, 1);
+      console.log(
+        `the revealed word ${
+          activeGames[socketMapForPlayer[socket.id]].revealedWord
+        }`
+      );
+      socket.broadcast
+        .to(socketMapForPlayer[socket.id])
+        .emit(
+          "set-revealed-word",
+          activeGames[socketMapForPlayer[socket.id]].revealedWord
+        );
+      io.in(socketMapForPlayer[socket.id]).emit("gamemaster-word-received");
+    }
+  });
+
+  socket.on("make-contact", ({ codeWord, clue }) => {
+    if (
+      activeGames[socketMapForPlayer[socket.id]].currContactData === undefined
+    ) {
+      activeGames[socketMapForPlayer[socket.id]].currContactData = {
+        contactWord: codeWord,
+        clue: clue,
+        thisContactTime: 10,
+        otherPlayerGuesses: [],
+        gameMasterGuesses: [],
+        playerName: playerNames[socket.id],
+      };
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "display-code",
+        playerNames[socket.id],
+        clue
+      );
+    } else {
+      //curr round is going on
+    }
+  });
+
+  socket.on("match-contact", (guess) => {
+    if (socket.id === activeRooms[socketMapForPlayer[socket.id]].gameMasterId) {
+      activeGames[
+        socketMapForPlayer[socket.id]
+      ].currContactData.gameMasterGuesses.push(guess);
+      let wasCorrect = false;
+      if (
+        guess ===
+        activeGames[socketMapForPlayer[socket.id]].currContactData.contactWord
+      ) {
+        wasCorrect = true;
+      }
+      socket.emit(
+        "break-contact-attempt",
+        wasCorrect,
+        guess,
+        activeGames[socketMapForPlayer[socket.id]].currContactData,
+        playerNames[socket.id]
+      );
+    } else {
+      activeGames[
+        socketMapForPlayer[socket.id]
+      ].currContactData.otherPlayerGuesses.push(guess);
+      let wasCorrect = false;
+      // console.log(guess,activeG);
+      if (
+        guess ===
+        activeGames[socketMapForPlayer[socket.id]].currContactData.contactWord
+      ) {
+        wasCorrect = true;
+      }
+      socket.emit(
+        "make-contact-attempt",
+        wasCorrect,
+        guess,
+        activeGames[socketMapForPlayer[socket.id]].currContactData,
+        playerNames[socket.id]
+      );
+    }
+  });
 });
 
 instrument(io, {
   auth: false,
 });
-// app.get("/", (req, res) => {
-//   res.send("working like a charm");
+//app.get("/", (req, res) => {
+//res.send("working like a charm");
 // })
 // app.listen(5000, () => {
 //   console.log("server is listening on port 5000");

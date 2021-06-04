@@ -1,13 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 
-export default function InputPagePlayers({ socket }) {
-  function joinRoom() {
-    console.log("ppp");
-    socket.emit("player-joined", roomCode, name, (msg) => {
-      alert(msg);
-    });
-  }
-
+export default function GameArea() {
   const [roomCode, setRoomCode] = useState("");
   const [name, setName] = useState("");
   return (
@@ -26,7 +19,7 @@ export default function InputPagePlayers({ socket }) {
           setRoomCode(e.target.value);
         }}
       ></input>
-      <button onClick={joinRoom}>Submit</button>
+      <button>Submit</button>
     </div>
   );
 }
