@@ -21,10 +21,10 @@ let activeRooms = {};
 //     revealedWord:,
 //     guessedWords:,
 //     currContactData:{
-//       playerChosenWord:,
-//       hint:,
+//       contactWord:,
+//       clue:,
 //       thisContactTime:,
-//       otherPlayerGuesses: [{name:,guess:}],
+//       otherPlayerGuesses: [{name:,playerId:,guess:}],
 //       gameMasterGuesses: [],
 //     }
 //   }
@@ -34,10 +34,14 @@ let activeGames = {};
 
 let socketMapForHost = {};
 let socketMapForPlayer = {};
+let playerNames = {};
 
-const removePlayer = async (playerId) => {
-  const sockets = await io.in(playerId).fetchSockets();
-  sockets[0].leave(socketMapForPlayer[playerId]);
+const removePlayer = async ({ playerId, socket }) => {
+  if (socket === null || socket === undefined) {
+    const sockets = await io.in(playerId).fetchSockets();
+    socket = sockets[0];
+  }
+  socket.leave(socketMapForPlayer[playerId]);
   activeRooms[socketMapForPlayer[playerId]].players = activeRooms[
     socketMapForPlayer[playerId]
   ].players.filter((player) => {
@@ -51,6 +55,7 @@ const removePlayer = async (playerId) => {
       activeRooms[socketMapForPlayer[playerId]]
     );
   }
+  socket.emit("clear-data");
   delete socketMapForPlayer[playerId];
 };
 
@@ -58,7 +63,7 @@ io.on("connection", (socket) => {
   //   console.log(socket.id);
   socket.on("game-created", (gameVars) => {
     if (socketMapForPlayer[socket.id]) {
-      removePlayer(socket.id);
+      removePlayer({ playerId: socket.id, socket: socket });
     }
     // if (socketMapForHost[socket.id]) {
     //   socket.leave(socketMapForHost[socket.id]);
@@ -71,6 +76,7 @@ io.on("connection", (socket) => {
       roomCode = Math.floor(Math.random() * 900000 + 100000);
     } while (roomCode in activeRooms);
     socketMapForPlayer[socket.id] = roomCode;
+    playerNames[socket.id] = gameVars.name;
     activeRooms[roomCode] = {
       roomCode: roomCode,
       gameMasterId: socket.id,
@@ -95,8 +101,9 @@ io.on("connection", (socket) => {
       sendAlert("Game has already start,Please wait for it to finish.");
     } else if (activeRooms[roomCode]) {
       if (socketMapForPlayer[socket.id]) {
-        removePlayer(socket.id);
+        removePlayer({ playerId: socket.id, socket: socket });
       }
+      playerNames[socket.id] = name;
       socketMapForPlayer[socket.id] = roomCode;
       socket.join(roomCode);
       activeRooms[roomCode].players = [
@@ -108,25 +115,31 @@ io.on("connection", (socket) => {
       sendAlert("The room code is invalid");
     }
   });
-
-  socket.on("player-left", (alertPlayer) => {
-    if (activeRooms[socketMapForPlayer[socket.id]].gameMasterId === socket.id) {
+  const events = ["player-left"];
+  events.forEach((event) => {
+    socket.on(event, () => {
+      // console.log(socket.id);
       if (
-        activeRooms[socketMapForPlayer[socket.id]].players[0].id === socket.id
+        // activeRooms[socketMapForPlayer[socket.id]].gameMasterId === socket.id
+        true
       ) {
-        if (activeRooms[socketMapForPlayer[socket.id]].players.size > 1) {
+        if (
+          activeRooms[socketMapForPlayer[socket.id]].players[0].id === socket.id
+        ) {
+          if (activeRooms[socketMapForPlayer[socket.id]].players.size > 1) {
+            activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
+              activeRooms[socketMapForPlayer[socket.id]].players[1].id;
+          }
+        } else {
           activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
-            activeRooms[socketMapForPlayer[socket.id]].players[1].id;
+            activeRooms[socketMapForPlayer[socket.id]].players[0].id;
         }
-      } else {
-        activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
-          activeRooms[socketMapForPlayer[socket.id]].players[0].id;
       }
-    }
-    removePlayer(socket.id);
-    alertPlayer();
+      removePlayer({ playerId: socket.id, socket: socket });
+      console.log("player left");
+      // if (event === "player-left") alertPlayer();
+    });
   });
-
   socket.on("kick-player", async (playerId) => {
     if (activeRooms[socketMapForPlayer[playerId]].gameMasterId === playerId) {
       activeRooms[socketMapForPlayer[playerId]].gameMasterId =
@@ -134,7 +147,7 @@ io.on("connection", (socket) => {
     }
     const sockets = await io.in(playerId).fetchSockets();
     sockets[0].emit("player-is-kicked");
-    removePlayer(playerId);
+    removePlayer({ playerId: playerId, socket: null });
   });
 
   socket.on("make-gamemaster", (playerId) => {
@@ -179,7 +192,83 @@ io.on("connection", (socket) => {
       );
     } else {
       activeGames[socketMapForPlayer[socket.id]].gameMasterWord = secretWord;
+      activeGames[socketMapForPlayer[socket.id]].revealedWord =
+        secretWord.substr(0, 1);
+      console.log(
+        `the revealed word ${
+          activeGames[socketMapForPlayer[socket.id]].revealedWord
+        }`
+      );
+      socket.broadcast
+        .to(socketMapForPlayer[socket.id])
+        .emit(
+          "set-revealed-word",
+          activeGames[socketMapForPlayer[socket.id]].revealedWord
+        );
       io.in(socketMapForPlayer[socket.id]).emit("gamemaster-word-received");
+    }
+  });
+
+  socket.on("make-contact", ({ codeWord, clue }) => {
+    if (
+      activeGames[socketMapForPlayer[socket.id]].currContactData === undefined
+    ) {
+      activeGames[socketMapForPlayer[socket.id]].currContactData = {
+        contactWord: codeWord,
+        clue: clue,
+        thisContactTime: 10,
+        otherPlayerGuesses: [],
+        gameMasterGuesses: [],
+        playerName: playerNames[socket.id],
+      };
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "display-code",
+        playerNames[socket.id],
+        clue
+      );
+    } else {
+      //curr round is going on
+    }
+  });
+
+  socket.on("match-contact", (guess) => {
+    if (socket.id === activeRooms[socketMapForPlayer[socket.id]].gameMasterId) {
+      activeGames[
+        socketMapForPlayer[socket.id]
+      ].currContactData.gameMasterGuesses.push(guess);
+      let wasCorrect = false;
+      if (
+        guess ===
+        activeGames[socketMapForPlayer[socket.id]].currContactData.contactWord
+      ) {
+        wasCorrect = true;
+      }
+      socket.emit(
+        "break-contact-attempt",
+        wasCorrect,
+        guess,
+        activeGames[socketMapForPlayer[socket.id]].currContactData,
+        playerNames[socket.id]
+      );
+    } else {
+      activeGames[
+        socketMapForPlayer[socket.id]
+      ].currContactData.otherPlayerGuesses.push(guess);
+      let wasCorrect = false;
+      // console.log(guess,activeG);
+      if (
+        guess ===
+        activeGames[socketMapForPlayer[socket.id]].currContactData.contactWord
+      ) {
+        wasCorrect = true;
+      }
+      socket.emit(
+        "make-contact-attempt",
+        wasCorrect,
+        guess,
+        activeGames[socketMapForPlayer[socket.id]].currContactData,
+        playerNames[socket.id]
+      );
     }
   });
 });

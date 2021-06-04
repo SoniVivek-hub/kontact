@@ -23,7 +23,6 @@ export default function RoomPlayer({ socket }) {
   useEffect(() => {
     socket.on("player-is-kicked", () => {
       alert("you were kicked");
-      setGameData({});
     });
     return () => {
       socket.off("player-is-kicked");
@@ -38,17 +37,16 @@ export default function RoomPlayer({ socket }) {
     };
   });
   useEffect(() => {
-    socket.on("gamemaster-word-received", () => {
-      alert("game master has entered the word");
+    socket.on("clear-data", () => {
+      setGameData({});
     });
     return () => {
-      socket.off("gamemaster-word-received");
+      socket.off("clear-data");
     };
   });
   function leaveRoom() {
     socket.emit("player-left", () => {
       alert("left successfully");
-      setGameData({});
     });
   }
   function kickPlayer(playerId) {
@@ -106,7 +104,8 @@ export default function RoomPlayer({ socket }) {
       {gameData.players && gameData.players[0].id === socket.id ? (
         <button onClick={startGame}>Start game</button>
       ) : null}
-      <button onClick={leaveRoom}>Leave Room</button>
+
+      {gameData.players && <button onClick={leaveRoom}>Leave Room</button>}
     </div>
   );
 }

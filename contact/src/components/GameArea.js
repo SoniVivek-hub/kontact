@@ -19,7 +19,7 @@ export default function GameArea() {
           setRoomCode(e.target.value);
         }}
       ></input>
-      <button>>Submit</button>
+      <button>Submit</button>
     </div>
   );
 }
