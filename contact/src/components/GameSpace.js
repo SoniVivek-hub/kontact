@@ -6,16 +6,25 @@ export default function GameSpace({ socket }) {
   const [contact, setContact] = useState({ codeWord: null, clue: null });
   const [chats, setChats] = useState([]);
   const [guess, setGuess] = useState("");
+  const [gameMasterWordGuess, setGameMasterWordGuess] = useState("");
   function giveSecretWord() {
     socket.emit("secret-word", secretWord, (msg) => {
       alert(msg);
     });
   }
   function makeContact() {
-    socket.emit("make-contact", contact);
+    console.log(contact, revealedWord);
+    if (contact.codeWord.substring(0, revealedWord.length) === revealedWord)
+      socket.emit("make-contact", contact);
+    else {
+      alert("the word must start with the secret word");
+    }
   }
   function matchContact() {
     socket.emit("match-contact", guess);
+  }
+  function guessWord() {
+    socket.emit("guess-word", gameMasterWordGuess);
   }
   useEffect(() => {
     socket.on("set-revealed-word", (revealedWord) => {
@@ -35,7 +44,38 @@ export default function GameSpace({ socket }) {
       socket.off("gamemaster-word-received");
     };
   });
-
+  useEffect(() => {
+    socket.on("game-over", (playerName, gameMasterWordGuess) => {
+      alert(
+        `game over game master's word -"${gameMasterWordGuess}" has been guessed by ${playerName}`
+      );
+    });
+    return () => {
+      socket.off("game-over");
+    };
+  });
+  useEffect(() => {
+    socket.on("next-game-started", (gameMasterName) => {
+      alert(`New game has started with ${gameMasterName} as the game master`);
+      setChats([]);
+    });
+    return () => {
+      socket.off("next-game-started");
+    };
+  });
+  useEffect(() => {
+    socket.on("failed-guess", (playerName, gameMasterWordGuess) => {
+      setChats((prevChats) => {
+        return [
+          ...prevChats,
+          `${playerName} failed to guess the secret word with ${gameMasterWordGuess}`,
+        ];
+      });
+    });
+    return () => {
+      socket.off("failed-guess");
+    };
+  });
   useEffect(() => {
     socket.on("break-contact-attempt", (wasCorrect, guess, currContactData) => {
       if (wasCorrect) {
@@ -152,8 +192,15 @@ export default function GameSpace({ socket }) {
       <button type="submit" onClick={matchContact}>
         Match/break contact
       </button>
-      <input type="text"></input>
-      <button type="submit">Guess Word</button>
+      <input
+        type="text"
+        onChange={(e) => {
+          setGameMasterWordGuess(e.target.value);
+        }}
+      ></input>
+      <button type="submit" onClick={guessWord}>
+        Guess Word
+      </button>
     </div>
   );
 }
