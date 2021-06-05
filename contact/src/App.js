@@ -4,17 +4,32 @@ import RoomPlayer from "./components/RoomPlayer";
 import StartGame from "./components/StartGame";
 import GameSpace from "./components/GameSpace";
 import { io } from "socket.io-client";
+import {Route,BrowserRouter as Router,Link,Switch,Redirect,} from "react-router-dom"
+
+
 const socket = io.connect("http://localhost:5000");
 
 function App() {
   return (
-    <div className="App">
-      <HomePage socket={socket} />
-      <StartGame socket={socket} />
-      <InputPagePlayers socket={socket} />
-      <RoomPlayer socket={socket} />
-      <GameSpace socket={socket} />
-    </div>
+    <Router>
+      <Switch>
+          <Route exact path="/">
+            <HomePage socket={socket} />
+          </Route>
+          <Route exact path="/startgame">
+            <StartGame socket={socket} />
+          </Route>  
+          <Route exact path="/inputpageplayer">
+            <InputPagePlayers socket={socket} />
+          </Route>  
+          <Route exact path="/roomplayer">
+            <RoomPlayer socket={socket} />
+          </Route>  
+          <Route exact path="/gamespace">
+            <GameSpace socket={socket} />
+          </Route>  
+        </Switch>
+      </Router>
   );
 }
 

@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from "react";
-
+import {useHistory} from "react-router-dom"
 export default function InputPagePlayers({ socket }) {
+  let history = useHistory();
   function joinRoom() {
     console.log("ppp");
     socket.emit("player-joined", roomCode, name, (msg) => {
-      alert(msg);
+      if(msg!=="")
+        alert(msg);
+      else {
+        history.push("/roomplayer");
+      }
     });
   }
 

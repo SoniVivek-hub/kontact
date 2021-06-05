@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import {useHistory} from "react-router-dom"
 
 export default function StartGame({ socket }) {
+  let history = useHistory();
   const [time, setTime] = useState(5);
   const [name, setName] = useState("");
   const [wordLength, setWordLength] = useState(5);
@@ -13,6 +15,7 @@ export default function StartGame({ socket }) {
       checkDictionaryWords: checkDictionaryWords,
     };
     socket.emit("game-created", gameData);
+    history.push("/roomplayer");
   }
   return (
     <div>
@@ -45,10 +48,10 @@ export default function StartGame({ socket }) {
         ></input>
       </div>
       <input
-        type="radio"
-        value={checkDictionaryWords}
+        type="checkbox"
+        checked={checkDictionaryWords}
         onChange={(e) => {
-          setCheckDictionaryWords(e.target.value);
+          setCheckDictionaryWords(e.target.checked);
         }}
       ></input>
       <label>Check for dictionary words</label>

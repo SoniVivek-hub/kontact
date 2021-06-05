@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
+import {useHistory} from "react-router-dom"
 
 export default function RoomPlayer({ socket }) {
+  let history = useHistory();
   const [gameData, setGameData] = useState({});
   useEffect(() => {
     socket.on("game-hosted", (gameData) => {
-      console.log(gameData);
       setGameData(gameData);
     });
     return () => {
@@ -13,7 +14,6 @@ export default function RoomPlayer({ socket }) {
   });
   useEffect(() => {
     socket.on("players-update", (gameData) => {
-      console.log(gameData);
       setGameData(gameData);
       return () => {
         socket.off("players-update");
@@ -22,7 +22,9 @@ export default function RoomPlayer({ socket }) {
   });
   useEffect(() => {
     socket.on("player-is-kicked", () => {
+      console.log("kicked bro");
       alert("you were kicked");
+      history.push("/");
     });
     return () => {
       socket.off("player-is-kicked");
@@ -31,6 +33,7 @@ export default function RoomPlayer({ socket }) {
   useEffect(() => {
     socket.on("send-alert-for-game-started", () => {
       alert("the host has started the game");
+      history.push("/gamespace");
     });
     return () => {
       socket.off("send-alert-for-game-started");
@@ -39,15 +42,15 @@ export default function RoomPlayer({ socket }) {
   useEffect(() => {
     socket.on("clear-data", () => {
       setGameData({});
+      history.push("/");
     });
     return () => {
       socket.off("clear-data");
     };
   });
   function leaveRoom() {
-    socket.emit("player-left", () => {
-      alert("left successfully");
-    });
+    socket.emit("player-left");
+    history.push("/");
   }
   function kickPlayer(playerId) {
     socket.emit("kick-player", playerId);

@@ -114,7 +114,7 @@ io.on("connection", (socket) => {
     socket.emit("game-hosted", activeRooms[roomCode]);
   });
 
-  socket.on("player-joined", (roomCode, name, sendAlert) => {
+  socket.on("player-joined", async (roomCode, name, sendAlert) => {
     roomCode = parseInt(roomCode);
     if (activeRooms[roomCode] && activeRooms[roomCode].gameStarted) {
       sendAlert("Game has already start,Please wait for it to finish.");
@@ -129,17 +129,19 @@ io.on("connection", (socket) => {
         ...activeRooms[roomCode].players,
         { name: name, id: socket.id },
       ];
+      await sendAlert("");
       io.in(roomCode).emit("game-hosted", activeRooms[roomCode]);
     } else {
-      sendAlert("The room code is invalid");
+      sendAlert("The room code is invalid");       
     }
   });
   const events = ["player-left", "disconnect"];
   events.forEach((event) => {
     socket.on(event, () => {
       if (activeRooms[socketMapForPlayer[socket.id]] === undefined) {
-        console.log("game not there");
+        console.log("room is not there and is undefined in reality as player might be kicked");
       } else {
+        console.log("yes you are right room is there bro");
         if (
           activeRooms[socketMapForPlayer[socket.id]].gameMasterId === socket.id
         ) {
@@ -160,7 +162,7 @@ io.on("connection", (socket) => {
       }
     });
   });
-  socket.on("kick-player", async (playerId) => {
+  socket.on("kick-player",  async (playerId) => {
     if (activeRooms[socketMapForPlayer[playerId]].gameMasterId === playerId) {
       activeRooms[socketMapForPlayer[playerId]].gameMasterId =
         activeRooms[socketMapForPlayer[playerId]].players[0].id;
@@ -338,7 +340,7 @@ io.on("connection", (socket) => {
       );
     }
   });
-});
+});  
 
 instrument(io, {
   auth: false,

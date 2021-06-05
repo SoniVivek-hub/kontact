@@ -7,7 +7,7 @@
     "start": "node server.js",
     "devstart": "nodemon server.js",
     "client": "npm start --prefix contact",
-    "dev": "concurrently \"npm run devstart\" \"npm run client\""
+    "dev": "concurrently \"npm run start\" \"npm run client\""
   },
   "repository": {
     "type": "git",
