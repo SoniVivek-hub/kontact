@@ -33,6 +33,23 @@ let activeRooms = {};
 //   }
 // }
 
+//********************************************************************************** */
+
+// activeRooms[roomCode] = {
+//   roomCode: ,
+//   gameMasterId: ,
+//   time: ,
+//   wordLength: ,
+//   gameStarted: ,
+//   checkDictionaryWords: ,
+//   players: [
+//     {
+//       name: ,
+//       id: ,
+//     },
+//   ],
+// };
+
 let activeGames = {};
 let socketMapForHost = {};
 let socketMapForPlayer = {};
@@ -117,29 +134,30 @@ io.on("connection", (socket) => {
       sendAlert("The room code is invalid");
     }
   });
-  const events = ["player-left"];
+  const events = ["player-left", "disconnect"];
   events.forEach((event) => {
     socket.on(event, () => {
-      // console.log(socket.id);
-      if (
-        // activeRooms[socketMapForPlayer[socket.id]].gameMasterId === socket.id
-        true
-      ) {
+      if (activeRooms[socketMapForPlayer[socket.id]] === undefined) {
+        console.log("game not there");
+      } else {
         if (
-          activeRooms[socketMapForPlayer[socket.id]].players[0].id === socket.id
+          activeRooms[socketMapForPlayer[socket.id]].gameMasterId === socket.id
         ) {
-          if (activeRooms[socketMapForPlayer[socket.id]].players.size > 1) {
+          if (
+            activeRooms[socketMapForPlayer[socket.id]].players[0].id ===
+            socket.id
+          ) {
+            if (activeRooms[socketMapForPlayer[socket.id]].players.length > 1) {
+              activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
+                activeRooms[socketMapForPlayer[socket.id]].players[1].id;
+            }
+          } else {
             activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
-              activeRooms[socketMapForPlayer[socket.id]].players[1].id;
+              activeRooms[socketMapForPlayer[socket.id]].players[0].id;
           }
-        } else {
-          activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
-            activeRooms[socketMapForPlayer[socket.id]].players[0].id;
         }
+        removePlayer({ playerId: socket.id, socket: socket });
       }
-      removePlayer({ playerId: socket.id, socket: socket });
-      console.log("player left");
-      // if (event === "player-left") alertPlayer();
     });
   });
   socket.on("kick-player", async (playerId) => {
@@ -245,13 +263,15 @@ io.on("connection", (socket) => {
       ) {
         wasCorrect = true;
       }
-      socket.emit(
+      io.in(socketMapForPlayer[socket.id]).emit(
         "break-contact-attempt",
         wasCorrect,
         guess,
         activeGames[socketMapForPlayer[socket.id]].currContactData,
         playerNames[socket.id]
       );
+      if (wasCorrect)
+        activeGames[socketMapForPlayer[socket.id]].currContactData = undefined;
     } else {
       activeGames[
         socketMapForPlayer[socket.id]
@@ -264,12 +284,57 @@ io.on("connection", (socket) => {
       ) {
         wasCorrect = true;
       }
-      socket.emit(
+      io.in(socketMapForPlayer[socket.id]).emit(
         "make-contact-attempt",
         wasCorrect,
         guess,
         activeGames[socketMapForPlayer[socket.id]].currContactData,
         playerNames[socket.id]
+      );
+      activeGames[socketMapForPlayer[socket.id]].currContactData = undefined;
+    }
+  });
+
+  socket.on("guess-word", (gameMasterWordGuess) => {
+    console.log("got it");
+    if (
+      activeGames[socketMapForPlayer[socket.id]].gameMasterWord ===
+      gameMasterWordGuess
+    ) {
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "game-over",
+        playerNames[socket.id],
+        gameMasterWordGuess
+      );
+      //game over new roud start
+      activeGames[socketMapForPlayer[socket.id]] = {
+        ...activeGames[socketMapForPlayer[socket.id]],
+        gameMasterWord: "",
+        revealedWord: "",
+        currContactData: undefined,
+      };
+      let currGameMasterIndex;
+      activeRooms[socketMapForPlayer[socket.id]].players.map((player, key) => {
+        if (
+          activeRooms[socketMapForPlayer[socket.id]].gameMasterId === player.id
+        ) {
+          currGameMasterIndex = key;
+        }
+      });
+      activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
+        activeRooms[socketMapForPlayer[socket.id]].players[
+          (currGameMasterIndex + 1) %
+            activeRooms[socketMapForPlayer[socket.id]].players.length
+        ];
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "next-game-started",
+        playerNames[activeRooms[socketMapForPlayer[socket.id]].gameMasterId]
+      );
+    } else {
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "failed-guess",
+        playerNames[socket.id],
+        gameMasterWordGuess
       );
     }
   });
