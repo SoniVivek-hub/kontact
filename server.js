@@ -23,6 +23,7 @@ let activeRooms = {};
 //     revealedWord:,
 //     guessedWords:,
 //     currContactData:{
+//       madeBy:,
 //       contactWord:,
 //       clue:,
 //       thisContactTime:,
@@ -239,6 +240,7 @@ io.on("connection", (socket) => {
       activeGames[socketMapForPlayer[socket.id]].currContactData === undefined
     ) {
       activeGames[socketMapForPlayer[socket.id]].currContactData = {
+        madeBy:socket.id,
         contactWord: codeWord,
         clue: clue,
         thisContactTime: 10,
@@ -375,6 +377,10 @@ io.on("connection", (socket) => {
     )
       socket.emit("players-update", activeRooms[socketMapForPlayer[socket.id]]);
   });
+  socket.on("get-gameDataAndRoomData", () => {
+    console.log(activeRooms[socketMapForPlayer[socket.id]]);
+    socket.emit("players-update-game-space",activeGames[socketMapForPlayer[socket.id]],activeRooms[socketMapForPlayer[socket.id]])
+  })
 });
 instrument(io, {
   auth: false,
