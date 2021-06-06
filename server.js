@@ -14,7 +14,6 @@ const app = express();
 
 let activeRooms = {};
 
-
 // let activeGames={
 //   roomcode:{
 //     gameMasterWord:,
@@ -42,6 +41,7 @@ let activeRooms = {};
 //   wordLength: ,
 //   gameStarted: ,
 //   checkDictionaryWords: ,
+//   gameMasterCount:,
 //   players: [
 //     {
 //       name: ,
@@ -103,6 +103,7 @@ io.on("connection", (socket) => {
       wordLength: gameVars.wordLength,
       gameStarted: false,
       checkDictionaryWords: gameVars.checkDictionaryWords,
+      gameMasterCount: 1,
       players: [
         {
           name: gameVars.name,
@@ -132,14 +133,16 @@ io.on("connection", (socket) => {
       await sendAlert("");
       io.in(roomCode).emit("game-hosted", activeRooms[roomCode]);
     } else {
-      sendAlert("The room code is invalid");       
+      sendAlert("The room code is invalid");
     }
   });
   const events = ["player-left", "disconnect"];
   events.forEach((event) => {
     socket.on(event, () => {
       if (activeRooms[socketMapForPlayer[socket.id]] === undefined) {
-        console.log("room is not there and is undefined in reality as player might be kicked");
+        console.log(
+          "room is not there and is undefined in reality as player might be kicked"
+        );
       } else {
         console.log("yes you are right room is there bro");
         if (
@@ -162,7 +165,7 @@ io.on("connection", (socket) => {
       }
     });
   });
-  socket.on("kick-player",  async (playerId) => {
+  socket.on("kick-player", async (playerId) => {
     if (activeRooms[socketMapForPlayer[playerId]].gameMasterId === playerId) {
       activeRooms[socketMapForPlayer[playerId]].gameMasterId =
         activeRooms[socketMapForPlayer[playerId]].players[0].id;
@@ -270,7 +273,7 @@ io.on("connection", (socket) => {
         wasCorrect,
         guess,
         activeGames[socketMapForPlayer[socket.id]].currContactData,
-        playerNames[socket.id]
+        activeGames[socketMapForPlayer[socket.id]].gameMasterWord
       );
       if (wasCorrect)
         activeGames[socketMapForPlayer[socket.id]].currContactData = undefined;
@@ -291,14 +294,15 @@ io.on("connection", (socket) => {
         wasCorrect,
         guess,
         activeGames[socketMapForPlayer[socket.id]].currContactData,
-        playerNames[socket.id]
+        playerNames[socket.id],
+        activeGames[socketMapForPlayer[socket.id]].gameMasterWord
       );
       activeGames[socketMapForPlayer[socket.id]].currContactData = undefined;
     }
   });
 
-  socket.on("guess-word", (gameMasterWordGuess) => {
-    console.log("got it");
+  socket.on("guess-word", async (gameMasterWordGuess) => {
+    // console.log("got it");
     if (
       activeGames[socketMapForPlayer[socket.id]].gameMasterWord ===
       gameMasterWordGuess
@@ -323,15 +327,39 @@ io.on("connection", (socket) => {
           currGameMasterIndex = key;
         }
       });
-      activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
-        activeRooms[socketMapForPlayer[socket.id]].players[
-          (currGameMasterIndex + 1) %
-            activeRooms[socketMapForPlayer[socket.id]].players.length
-        ];
-      io.in(socketMapForPlayer[socket.id]).emit(
-        "next-game-started",
-        playerNames[activeRooms[socketMapForPlayer[socket.id]].gameMasterId]
-      );
+      console.log(currGameMasterIndex);
+      if (
+        activeRooms[socketMapForPlayer[socket.id]].gameMasterCount <
+        activeRooms[socketMapForPlayer[socket.id]].players.length
+      ) {
+        activeRooms[socketMapForPlayer[socket.id]].gameMasterCount++;
+        activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
+          activeRooms[socketMapForPlayer[socket.id]].players[
+            (currGameMasterIndex + 1) %
+              activeRooms[socketMapForPlayer[socket.id]].players.length
+          ].id;
+        console.log(activeRooms[socketMapForPlayer[socket.id]].gameMasterId);
+        io.in(socketMapForPlayer[socket.id]).emit(
+          "next-game-started",
+          playerNames[activeRooms[socketMapForPlayer[socket.id]].gameMasterId]
+        );
+        io.in(socketMapForPlayer[socket.id]).emit(
+          "update-game-space",
+          activeGames[socketMapForPlayer[socket.id]]
+        );
+      } else {
+        //game over take to waiting room
+        activeRooms[socketMapForPlayer[socket.id]].gameStarted = false;
+        delete activeGames[socketMapForPlayer[socket.id]];
+        io.in(socketMapForPlayer[socket.id]).emit(
+          "players-update",
+          activeRooms[socketMapForPlayer[socket.id]]
+        );
+        io.in(socketMapForPlayer[socket.id]).emit(
+          "game-ended-back-to-WR",
+          activeRooms[socketMapForPlayer[socket.id]]
+        );
+      }
     } else {
       io.in(socketMapForPlayer[socket.id]).emit(
         "failed-guess",
@@ -340,8 +368,14 @@ io.on("connection", (socket) => {
       );
     }
   });
-});  
-
+  socket.on("get-gameData", () => {
+    if (
+      socketMapForPlayer[socket.id] &&
+      activeRooms[socketMapForPlayer[socket.id]]
+    )
+      socket.emit("players-update", activeRooms[socketMapForPlayer[socket.id]]);
+  });
+});
 instrument(io, {
   auth: false,
 });
@@ -350,4 +384,5 @@ instrument(io, {
 // })
 // app.listen(5000, () => {
 //   console.log("server is listening on port 5000");
+// })
 // })

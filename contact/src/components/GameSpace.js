@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useHistory } from "react-router-dom";
 
 export default function GameSpace({ socket }) {
+  let history = useHistory();
   const [secretWord, setsecretWord] = useState("");
   const [revealedWord, setRevealedWord] = useState("");
   const [contact, setContact] = useState({ codeWord: null, clue: null });
@@ -32,6 +34,25 @@ export default function GameSpace({ socket }) {
     });
     return () => {
       socket.off("set-revealed-word");
+    };
+  });
+  useEffect(() => {
+    socket.on("update-game-space", (gameVars) => {
+      setRevealedWord(gameVars.revealedWord);
+      setsecretWord("");
+      if (gameVars.currContactData === undefined) {
+        setContact({});
+      } else {
+        setContact({
+          clue: gameVars.currContactData,
+          codeWord: gameVars.currContactData.contactWord,
+        });
+      }
+      setGuess("");
+      setGameMasterWordGuess("");
+    });
+    return () => {
+      socket.off("update-game-space");
     };
   });
   useEffect(() => {
@@ -77,23 +98,28 @@ export default function GameSpace({ socket }) {
     };
   });
   useEffect(() => {
-    socket.on("break-contact-attempt", (wasCorrect, guess, currContactData) => {
-      if (wasCorrect) {
-        setChats((prevChats) => {
-          return [
-            ...prevChats,
-            `The Game master successfully matched the contact word ${currContactData.contactWord}!`,
-          ];
-        });
-      } else {
-        setChats((prevChats) => {
-          return [
-            ...prevChats,
-            `Game Master tried to match the contact with ${guess}`,
-          ];
-        });
+    socket.on(
+      "break-contact-attempt",
+      (wasCorrect, guess, currContactData, gameMasterWord) => {
+        if (wasCorrect) {
+          setChats((prevChats) => {
+            return [
+              ...prevChats,
+              `The Game master successfully matched the contact word ${currContactData.contactWord}!`,
+            ];
+          });
+
+          // alert(revealed)
+        } else {
+          setChats((prevChats) => {
+            return [
+              ...prevChats,
+              `Game Master tried to match the contact with ${guess}`,
+            ];
+          });
+        }
       }
-    });
+    );
     return () => {
       socket.off("break-contact-attempt");
     };
@@ -102,7 +128,7 @@ export default function GameSpace({ socket }) {
   useEffect(() => {
     socket.on(
       "make-contact-attempt",
-      (wasCorrect, guess, currContactData, name) => {
+      (wasCorrect, guess, currContactData, name, gameMasterWord) => {
         if (wasCorrect) {
           setChats((prevChats) => {
             return [
@@ -110,6 +136,7 @@ export default function GameSpace({ socket }) {
               `${name} successfully matched the contact word ${currContactData.contactWord}!`,
             ];
           });
+          setRevealedWord(gameMasterWord.substring(0, revealedWord.length + 1));
         } else {
           setChats((prevChats) => {
             return [
@@ -133,6 +160,15 @@ export default function GameSpace({ socket }) {
     });
     return () => {
       socket.off("display-code");
+    };
+  });
+
+  useEffect(() => {
+    socket.on("game-ended-back-to-WR", (gameData) => {
+      history.push("/roomplayer");
+    });
+    return () => {
+      socket.off("game-ended-back-to-WR");
     };
   });
 

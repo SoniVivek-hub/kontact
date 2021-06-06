@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {useHistory} from "react-router-dom"
+import { useHistory } from "react-router-dom";
 
 export default function RoomPlayer({ socket }) {
   let history = useHistory();
@@ -19,6 +19,9 @@ export default function RoomPlayer({ socket }) {
         socket.off("players-update");
       };
     });
+  });
+  useEffect(() => {
+    socket.emit("get-gameData");
   });
   useEffect(() => {
     socket.on("player-is-kicked", () => {
