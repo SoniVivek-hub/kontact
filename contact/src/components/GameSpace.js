@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
+import Timer from "react-compound-timer";
 
 export default function GameSpace({ socket }) {
+  let stopTimer;
+  let startTimer;
   let history = useHistory();
   const [secretWord, setsecretWord] = useState("");
   const [revealedWord, setRevealedWord] = useState("");
@@ -9,6 +12,7 @@ export default function GameSpace({ socket }) {
   const [chats, setChats] = useState([]);
   const [guess, setGuess] = useState("");
   const [gameMasterWordGuess, setGameMasterWordGuess] = useState("");
+  const [showTimer, setShowTimer] = useState(false);
   function giveSecretWord() {
     socket.emit("secret-word", secretWord, (msg) => {
       alert(msg);
@@ -102,6 +106,7 @@ export default function GameSpace({ socket }) {
       "break-contact-attempt",
       (wasCorrect, guess, currContactData, gameMasterWord) => {
         if (wasCorrect) {
+          stopTimer();
           setChats((prevChats) => {
             return [
               ...prevChats,
@@ -130,6 +135,7 @@ export default function GameSpace({ socket }) {
       "make-contact-attempt",
       (wasCorrect, guess, currContactData, name, gameMasterWord) => {
         if (wasCorrect) {
+          stopTimer();
           setChats((prevChats) => {
             return [
               ...prevChats,
@@ -157,6 +163,7 @@ export default function GameSpace({ socket }) {
       setChats((prevChats) => {
         return [...prevChats, `${name} made a contact with the clue ${clue}!`];
       });
+      startTimer();
     });
     return () => {
       socket.off("display-code");
@@ -173,70 +180,106 @@ export default function GameSpace({ socket }) {
   });
 
   return (
-    <div>
-      <div>Chat Box</div>
-      <div>
-        {chats.map((chat, key) => {
-          return <p key={key}>{chat}</p>;
-        })}
-      </div>
-      <div>{revealedWord}</div>
-      <input
-        type="text"
-        value={secretWord}
-        onChange={(e) => setsecretWord(e.target.value)}
-      ></input>
-      <button type="submit" onClick={giveSecretWord}>
-        Enter secret word
-      </button>
-      <input
-        type="text"
-        placeholder="Enter clue"
-        value={contact.clue}
-        onChange={(e) => {
-          setContact((prevValue) => {
-            return {
-              ...prevValue,
-              clue: e.target.value,
-            };
-          });
-        }}
-      ></input>
-      <input
-        type="text"
-        placeholder="Enter the contact word"
-        value={contact.codeWord}
-        onChange={(e) => [
-          setContact((prevValue) => {
-            return {
-              ...prevValue,
-              codeWord: e.target.value,
-            };
-          }),
-        ]}
-      ></input>
-      <button type="submit" onClick={makeContact}>
-        Make Contact
-      </button>
-      <input
-        type="text"
-        value={guess}
-        onChange={(e) => {
-          setGuess(e.target.value);
-        }}
-      ></input>
-      <button type="submit" onClick={matchContact}>
-        Match/break contact
-      </button>
-      <input
-        type="text"
-        onChange={(e) => {
-          setGameMasterWordGuess(e.target.value);
-        }}
-      ></input>
-      <button type="submit" onClick={guessWord}>
-        Guess Word
-      </button>
-    </div>
+    <Timer initialTime={40000} startImmediately={false} direction="backward">
+      {({ start, resume, pause, stop, reset, timerState }) => {
+        stopTimer = () => {
+          stop();
+          setShowTimer(false);
+        };
+        startTimer = () => {
+          start();
+          setShowTimer(true);
+        };
+        return (
+          <>
+            {showTimer && (
+              <div>
+                <Timer.Seconds /> seconds
+              </div>
+            )}
+
+            <br />
+            <div>Chat Box</div>
+            <div>
+              {chats.map((chat, key) => {
+                return <p key={key}>{chat}</p>;
+              })}
+            </div>
+            <div>{revealedWord}</div>
+            <input
+              type="text"
+              value={secretWord}
+              onChange={(e) => setsecretWord(e.target.value)}
+            ></input>
+            <button type="submit" onClick={giveSecretWord}>
+              Enter secret word
+            </button>
+            <input
+              type="text"
+              placeholder="Enter clue"
+              value={contact.clue}
+              onChange={(e) => {
+                setContact((prevValue) => {
+                  return {
+                    ...prevValue,
+                    clue: e.target.value,
+                  };
+                });
+              }}
+            ></input>
+            <input
+              type="text"
+              placeholder="Enter the contact word"
+              value={contact.codeWord}
+              onChange={(e) => [
+                setContact((prevValue) => {
+                  return {
+                    ...prevValue,
+                    codeWord: e.target.value,
+                  };
+                }),
+              ]}
+            ></input>
+            <button
+              type="submit"
+              onClick={() => {
+                makeContact();
+              }}
+            >
+              Make Contact
+            </button>
+            <input
+              type="text"
+              value={guess}
+              onChange={(e) => {
+                setGuess(e.target.value);
+              }}
+            ></input>
+            <button
+              type="submit"
+              onClick={() => {
+                matchContact();
+              }}
+            >
+              Match/break contact
+            </button>
+            <input
+              type="text"
+              onChange={(e) => {
+                setGameMasterWordGuess(e.target.value);
+              }}
+            ></input>
+            <button
+              type="submit"
+              onClick={() => {
+                guessWord();
+              }}
+            >
+              Guess Word
+            </button>
+          </>
+        );
+      }}
+    </Timer>
   );
 }
