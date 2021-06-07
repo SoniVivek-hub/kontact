@@ -8,6 +8,7 @@ export default function GameSpace({ socket }) {
   let history = useHistory();
   const [secretWord, setsecretWord] = useState("");
   const [revealedWord, setRevealedWord] = useState("");
+  const [showWaiting, setShowWaiting] = useState(true);
   const [contact, setContact] = useState({ codeWord: null, clue: null });
   const [chats, setChats] = useState([]);
   const [guess, setGuess] = useState("");
@@ -15,9 +16,12 @@ export default function GameSpace({ socket }) {
   const [roomData, setRoomData] = useState({});
   const [gameData, setGameData] = useState({});
   const [showTimer, setShowTimer] = useState(false);
-  const [showMakeContact, setShowMakeContact] = useState(true);
+  const [showMatchContact, setshowMatchContact] = useState(false);
+  const [showSecretWordInput, setshowSecretWordInput] = useState(true);
   function giveSecretWord() {
+    setshowSecretWordInput(false);
     socket.emit("secret-word", secretWord, (msg) => {
+      setshowSecretWordInput(true);
       alert(msg);
     });
   }
@@ -39,6 +43,7 @@ export default function GameSpace({ socket }) {
   useEffect(() => {
     socket.on("set-revealed-word", (revealedWord) => {
       setRevealedWord(revealedWord);
+      setShowWaiting(false);
     });
     return () => {
       socket.off("set-revealed-word");
@@ -52,9 +57,6 @@ export default function GameSpace({ socket }) {
       setRoomData(roomData);
       setGameData(gameData);
       console.log(roomData,gameData);
-      if (gameData && gameData.currContactData) {
-        alert(gameData.currContactData.madeBy);
-      }
     });
     return () => {
       socket.off("players-update-game-space");
@@ -104,6 +106,7 @@ export default function GameSpace({ socket }) {
       alert(`New game has started with ${gameMasterName} as the game master`);
       socket.emit("get-gameDataAndRoomData");
       setChats([]);
+      setShowWaiting(true);
     });
     return () => {
       socket.off("next-game-started");
@@ -128,7 +131,7 @@ export default function GameSpace({ socket }) {
       (wasCorrect, guess, currContactData, gameMasterWord) => {
         if (wasCorrect) {
           stopTimer();
-          setShowMakeContact(false);
+          setshowMatchContact(false);
           setChats((prevChats) => {
             return [
               ...prevChats,
@@ -158,7 +161,7 @@ export default function GameSpace({ socket }) {
       (wasCorrect, guess, currContactData, name, gameMasterWord) => {
         if (wasCorrect) {
           stopTimer();
-          setShowMakeContact(false);
+          setshowMatchContact(false);
           setChats((prevChats) => {
             return [
               ...prevChats,
@@ -168,6 +171,9 @@ export default function GameSpace({ socket }) {
           setRevealedWord(gameMasterWord.substring(0, revealedWord.length + 1));
         } else {
           setChats((prevChats) => {
+            setshowMatchContact(false);
+            stopTimer();
+            socket.emit("get-gameDataAndRoomData");
             return [
               ...prevChats,
               `${name} tried to match ${guess} with ${currContactData.contactWord}`,
@@ -186,7 +192,7 @@ export default function GameSpace({ socket }) {
       setChats((prevChats) => {
         return [...prevChats, `${name} made a contact with the clue ${clue}!`];
       });
-      setShowMakeContact(true);
+      setshowMatchContact(true);
       socket.emit("get-gameDataAndRoomData");
       startTimer();
     });
@@ -203,6 +209,10 @@ export default function GameSpace({ socket }) {
       socket.off("game-ended-back-to-WR");
     };
   });
+
+  if (showWaiting && socket.id !== roomData.gameMasterId) {
+    return (<h1>Waiting for GameMaster to enter the secret word</h1>);
+  }
 
   return (
     <>
@@ -235,8 +245,9 @@ export default function GameSpace({ socket }) {
                 return <p key={key}>{chat}</p>;
               })}
             </div>
-            <div>{revealedWord}</div>
-      {roomData && roomData.gameMasterId === socket.id &&
+      {roomData && roomData.gameMasterId !== socket.id &&
+        (<div>{revealedWord}</div>)}
+      {(showSecretWordInput&& roomData && roomData.gameMasterId === socket.id) &&
         (<>
             <input
               type="text"
@@ -248,7 +259,7 @@ export default function GameSpace({ socket }) {
             </button>
         </>)
       }
-      {roomData && roomData.gameMasterId !== socket.id &&
+      {!showMatchContact && roomData && roomData.gameMasterId !== socket.id &&
         (<>
             <input
               type="text"
@@ -285,7 +296,7 @@ export default function GameSpace({ socket }) {
           Make Contact
             </button>
         </>)}
-      {(showMakeContact && gameData.currContactData && (gameData.currContactData.madeBy !== socket.id)) &&
+      {(showMatchContact && gameData.currContactData && (gameData.currContactData.madeBy !== socket.id)) &&
         (<>
             <input
               type="text"
