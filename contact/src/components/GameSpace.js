@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import Timer from "react-compound-timer";
 
 export default function GameSpace({ socket }) {
-  let stopTimer;
-  let startTimer;
+  let stopTimer=useRef();
+  let startTimer=useRef();
   let history = useHistory();
+  const [dashes, setDashes] = useState();
   const [secretWord, setsecretWord] = useState("");
   const [revealedWord, setRevealedWord] = useState("");
   const [showWaiting, setShowWaiting] = useState(true);
@@ -18,12 +19,19 @@ export default function GameSpace({ socket }) {
   const [showTimer, setShowTimer] = useState(false);
   const [showMatchContact, setshowMatchContact] = useState(false);
   const [showSecretWordInput, setshowSecretWordInput] = useState(true);
+  const [secretWordLength, setSecretWordLength] = useState(0);
+  const [trigger15, setTrigger15] = useState(false);
   function giveSecretWord() {
     setshowSecretWordInput(false);
-    socket.emit("secret-word", secretWord, (msg) => {
+    socket.emit("secret-word", secretWord.toLowerCase(), (msg) => {
+      setDashes(" _".repeat(secretWordLength - revealedWord.length));
+      setsecretWord(secretWord.toLowerCase());
       setshowSecretWordInput(true);
       alert(msg);
     });
+  }
+  function contactExpired() {
+    socket.emit("contact-expired");
   }
   function makeContact() {
     console.log(contact, revealedWord);
@@ -41,8 +49,25 @@ export default function GameSpace({ socket }) {
     socket.emit("guess-word", gameMasterWordGuess);
   }
   useEffect(() => {
-    socket.on("set-revealed-word", (revealedWord) => {
+    socket.on("contact-expired-reply", (contactWord) => {
+      stopTimer.current();
+      setshowMatchContact(false);
+      setChats((prevChats) => {
+        return [
+          ...prevChats,
+          `The contact word was ${contactWord}!, and time passed out and noone could guess it`,
+        ];
+      });
+    });
+    return () => {
+      socket.off("contact-expired-reply");
+    }
+  })
+  useEffect(() => {
+    socket.on("set-revealed-word", (revealedWord,secretWordLength) => {
       setRevealedWord(revealedWord);
+      setSecretWordLength(secretWordLength);
+      setDashes(" _".repeat(secretWordLength - revealedWord.length));
       setShowWaiting(false);
     });
     return () => {
@@ -65,6 +90,7 @@ export default function GameSpace({ socket }) {
   useEffect(() => {
     socket.on("update-game-space", (gameVars) => {
       setRevealedWord(gameVars.revealedWord);
+      setDashes(" _".repeat(secretWordLength - revealedWord.length));
       setsecretWord("");
       if (gameVars.currContactData === undefined) {
         setContact({});
@@ -130,7 +156,7 @@ export default function GameSpace({ socket }) {
       "break-contact-attempt",
       (wasCorrect, guess, currContactData, gameMasterWord) => {
         if (wasCorrect) {
-          stopTimer();
+          stopTimer.current();
           setshowMatchContact(false);
           setChats((prevChats) => {
             return [
@@ -160,7 +186,7 @@ export default function GameSpace({ socket }) {
       "make-contact-attempt",
       (wasCorrect, guess, currContactData, name, gameMasterWord) => {
         if (wasCorrect) {
-          stopTimer();
+          stopTimer.current();
           setshowMatchContact(false);
           setChats((prevChats) => {
             return [
@@ -169,10 +195,11 @@ export default function GameSpace({ socket }) {
             ];
           });
           setRevealedWord(gameMasterWord.substring(0, revealedWord.length + 1));
+          setDashes(" _".repeat(secretWordLength - revealedWord.length));
         } else {
           setChats((prevChats) => {
             setshowMatchContact(false);
-            stopTimer();
+            stopTimer.current();
             socket.emit("get-gameDataAndRoomData");
             return [
               ...prevChats,
@@ -194,7 +221,7 @@ export default function GameSpace({ socket }) {
       });
       setshowMatchContact(true);
       socket.emit("get-gameDataAndRoomData");
-      startTimer();
+      startTimer.current();
     });
     return () => {
       socket.off("display-code");
@@ -216,21 +243,38 @@ export default function GameSpace({ socket }) {
 
   return (
     <>
-    <Timer initialTime={40000} startImmediately={false} direction="backward">
+      <Timer initialTime={4000} startImmediately={false} direction="backward"
+        checkpoints={[
+        {
+            time: 0,
+            callback: () => {
+              contactExpired();
+            }
+        },
+        {
+            time:25000 ,
+            callback: () => {
+              
+            }
+        }
+    ]}
+      >
       {({ start, resume, pause, stop, reset, timerState }) => {
-        stopTimer = () => {
-          stop();
-          setShowTimer(false);
+          stopTimer.current = () => {
+            stop();
+            setShowTimer(false);
+            reset();
         };
-        startTimer = () => {
-          start();
-          setShowTimer(true);
+          startTimer.current = () => {
+            reset();
+            start();
+            setShowTimer(true);
         };
         return (
           <>
             {showTimer && (
               <div>
-                <Timer.Seconds /> seconds
+                <Timer.Seconds />
               </div>
             )}
             </>
@@ -245,8 +289,7 @@ export default function GameSpace({ socket }) {
                 return <p key={key}>{chat}</p>;
               })}
             </div>
-      {roomData && roomData.gameMasterId !== socket.id &&
-        (<div>{revealedWord}</div>)}
+      <div>{revealedWord} {dashes}</div>
       {(showSecretWordInput&& roomData && roomData.gameMasterId === socket.id) &&
         (<>
             <input

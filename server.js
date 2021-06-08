@@ -225,12 +225,11 @@ io.on("connection", (socket) => {
           activeGames[socketMapForPlayer[socket.id]].revealedWord
         }`
       );
-      socket.broadcast
-        .to(socketMapForPlayer[socket.id])
-        .emit(
-          "set-revealed-word",
-          activeGames[socketMapForPlayer[socket.id]].revealedWord
-        );
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "set-revealed-word",
+        activeGames[socketMapForPlayer[socket.id]].revealedWord,
+        activeGames[socketMapForPlayer[socket.id]].gameMasterWord.length
+      );
       io.in(socketMapForPlayer[socket.id]).emit("gamemaster-word-received");
     }
   });
@@ -380,6 +379,15 @@ io.on("connection", (socket) => {
   socket.on("get-gameDataAndRoomData", () => {
     console.log(activeRooms[socketMapForPlayer[socket.id]]);
     socket.emit("players-update-game-space",activeGames[socketMapForPlayer[socket.id]],activeRooms[socketMapForPlayer[socket.id]])
+  })
+  socket.on("contact-expired", () => {
+    if (activeGames[socketMapForPlayer[socket.id]].currContactData) {
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "contact-expired-reply",
+        activeGames[socketMapForPlayer[socket.id]].currContactData.contactWord
+      );
+      activeGames[socketMapForPlayer[socket.id]].currContactData = undefined;
+    }
   })
 });
 instrument(io, {
