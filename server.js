@@ -225,12 +225,11 @@ io.on("connection", (socket) => {
           activeGames[socketMapForPlayer[socket.id]].revealedWord
         }`
       );
-      socket.broadcast
-        .to(socketMapForPlayer[socket.id])
-        .emit(
-          "set-revealed-word",
-          activeGames[socketMapForPlayer[socket.id]].revealedWord
-        );
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "set-revealed-word",
+        activeGames[socketMapForPlayer[socket.id]].revealedWord,
+        activeGames[socketMapForPlayer[socket.id]].gameMasterWord.length
+      );
       io.in(socketMapForPlayer[socket.id]).emit("gamemaster-word-received");
     }
   });
@@ -240,7 +239,7 @@ io.on("connection", (socket) => {
       activeGames[socketMapForPlayer[socket.id]].currContactData === undefined
     ) {
       activeGames[socketMapForPlayer[socket.id]].currContactData = {
-        madeBy:socket.id,
+        madeBy: socket.id,
         contactWord: codeWord,
         clue: clue,
         thisContactTime: 10,
@@ -274,7 +273,7 @@ io.on("connection", (socket) => {
         "break-contact-attempt",
         wasCorrect,
         guess,
-        activeGames[socketMapForPlayer[socket.id]].currContactData,
+        "activeGames[socketMapForPlayer[socket.id]].currContactData",
         activeGames[socketMapForPlayer[socket.id]].gameMasterWord
       );
       if (wasCorrect)
@@ -379,8 +378,25 @@ io.on("connection", (socket) => {
   });
   socket.on("get-gameDataAndRoomData", () => {
     console.log(activeRooms[socketMapForPlayer[socket.id]]);
-    socket.emit("players-update-game-space",activeGames[socketMapForPlayer[socket.id]],activeRooms[socketMapForPlayer[socket.id]])
-  })
+    socket.emit(
+      "players-update-game-space",
+      activeGames[socketMapForPlayer[socket.id]],
+      activeRooms[socketMapForPlayer[socket.id]]
+    );
+  });
+
+  socket.on("contact-expire", () => {
+    if (activeGames[socketMapForPlayer[socket.id]].currContactData) {
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "contact-expire-get-contact",
+        activeGames[socketMapForPlayer[socket.id]].currContactData.contactWord
+      );
+      activeGames[socketMapForPlayer[socket.id]].currContactData = undefined;
+    }
+  });
+  socket.on("start-timer", () => {
+    io.in(socketMapForPlayer[socket.id]).emit("start-timer-reply");
+  });
 });
 instrument(io, {
   auth: false,
