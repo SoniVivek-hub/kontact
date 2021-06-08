@@ -22,7 +22,7 @@ export default function RoomPlayer({ socket }) {
   });
   useEffect(() => {
     socket.emit("get-gameData");
-  },[]);
+  }, []);
   useEffect(() => {
     socket.on("player-is-kicked", () => {
       console.log("kicked bro");

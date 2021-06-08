@@ -3,8 +3,8 @@ import { useHistory } from "react-router-dom";
 import Timer from "react-compound-timer";
 
 export default function GameSpace({ socket }) {
-  let stopTimer=useRef();
-  let startTimer=useRef();
+  let stopTimer = useRef();
+  let startTimer = useRef();
   let history = useHistory();
   const [dashes, setDashes] = useState();
   const [secretWord, setsecretWord] = useState("");
@@ -37,8 +37,7 @@ export default function GameSpace({ socket }) {
     console.log(contact, revealedWord);
     if (contact.codeWord.substring(0, revealedWord.length) === revealedWord) {
       socket.emit("make-contact", contact);
-    }
-    else {
+    } else {
       alert("the word must start with the secret word");
     }
   }
@@ -61,8 +60,8 @@ export default function GameSpace({ socket }) {
     });
     return () => {
       socket.off("start-15-timer");
-    }
-  })
+    };
+  });
   useEffect(() => {
     socket.on("contact-expired-reply", (contactWord) => {
       stopTimer.current();
@@ -76,10 +75,10 @@ export default function GameSpace({ socket }) {
     });
     return () => {
       socket.off("contact-expired-reply");
-    }
-  })
+    };
+  });
   useEffect(() => {
-    socket.on("set-revealed-word", (revealedWord,secretWordLength) => {
+    socket.on("set-revealed-word", (revealedWord, secretWordLength) => {
       setRevealedWord(revealedWord);
       setSecretWordLength(secretWordLength);
       setDashes(" _".repeat(secretWordLength - revealedWord.length));
@@ -92,11 +91,11 @@ export default function GameSpace({ socket }) {
   useEffect(() => {
     socket.emit("get-gameDataAndRoomData");
   }, []);
-  useEffect( () => {
-    socket.on("players-update-game-space", (gameData,roomData) => {
+  useEffect(() => {
+    socket.on("players-update-game-space", (gameData, roomData) => {
       setRoomData(roomData);
       setGameData(gameData);
-      console.log(roomData,gameData);
+      console.log(roomData, gameData);
     });
     return () => {
       socket.off("players-update-game-space");
@@ -262,117 +261,126 @@ export default function GameSpace({ socket }) {
     });
     return () => {
       socket.off("reset-timer-reply");
-    }
-  })
+    };
+  });
   if (showWaiting && socket.id !== roomData.gameMasterId) {
-    return (<h1>Waiting for GameMaster to enter the secret word</h1>);
+    return <h1>Waiting for GameMaster to enter the secret word</h1>;
   }
 
   return (
     <>
-      <Timer initialTime={40000} startImmediately={false} direction="backward"
-        onStop={() => console.log('onStop hook')}
+      <Timer
+        initialTime={40000}
+        startImmediately={false}
+        direction="backward"
+        onStop={() => console.log("onStop hook")}
         checkpoints={[
-        {
+          {
             time: 0,
             callback: () => {
               contactExpired();
-            }
-        },
-        {
-            time:25000 ,
+            },
+          },
+          {
+            time: 25000,
             callback: () => {
-              //end of 15 timer emit this to the server 
+              //end of 15 timer emit this to the server
               socket.emit("reset-timer");
-            }
-        }
-    ]}
+            },
+          },
+        ]}
       >
-      {({ start, resume, pause, stop, reset, timerState }) => {
+        {({ start, resume, pause, stop, reset, timerState }) => {
           stopTimer.current = () => {
             stop();
             setShowTimer(false);
             reset();
-        };
+          };
           startTimer.current = () => {
             reset();
             start();
             setShowTimer(true);
-        };
-        return (
-          <>
-            {showTimer && (
-              <div>
-                {!trigger15 ?
-                  <Timer.Seconds /> :
-                  <Timer.Seconds formatValue={(value) => value - 25} />
-                }
-              </div>
-            )}
+          };
+          return (
+            <>
+              {showTimer && (
+                <div>
+                  {!trigger15 ? (
+                    <Timer.Seconds />
+                  ) : (
+                    <Timer.Seconds formatValue={(value) => value - 25} />
+                  )}
+                </div>
+              )}
             </>
-        );
-      }}
-    </Timer>
+          );
+        }}
+      </Timer>
 
-            <br />
-            <div>Chat Box</div>
-            <div>
-              {chats.map((chat, key) => {
-                return <p key={key}>{chat}</p>;
-              })}
-            </div>
-      <div>{revealedWord} {dashes}</div>
-      {(showSecretWordInput&& roomData && roomData.gameMasterId === socket.id) &&
-        (<>
-            <input
-              type="text"
-              value={secretWord}
-              onChange={(e) => setsecretWord(e.target.value)}
-            ></input>
-            <button type="submit" onClick={giveSecretWord}>
-          Enter secret word
-            </button>
-        </>)
-      }
-      {!showMatchContact && roomData && roomData.gameMasterId !== socket.id &&
-        (<>
-            <input
-              type="text"
-              placeholder="Enter clue"
-              value={contact.clue}
-              onChange={(e) => {
-                setContact((prevValue) => {
-                  return {
-                    ...prevValue,
-                    clue: e.target.value,
-                  };
-                });
-              }}
-            ></input>
-            <input
-              type="text"
-              placeholder="Enter the contact word"
-              value={contact.codeWord}
-              onChange={(e) => [
-                setContact((prevValue) => {
-                  return {
-                    ...prevValue,
-                    codeWord: e.target.value,
-                  };
-                }),
-              ]}
-            ></input>
-            <button
-              type="submit"
-              onClick={() => {
-                makeContact();
-              }}
-            >
-          Make Contact
-            </button>
-        </>)}
-      {(showMatchContact && gameData.currContactData && (gameData.currContactData.madeBy !== socket.id)) &&
-        (<>
+      <br />
+      <div>Chat Box</div>
+      <div>
+        {chats.map((chat, key) => {
+          return <p key={key}>{chat}</p>;
+        })}
+      </div>
+      <div>
+        {revealedWord} {dashes}
+      </div>
+      {showSecretWordInput && roomData && roomData.gameMasterId === socket.id && (
+        <>
+          <input
+            type="text"
+            value={secretWord}
+            onChange={(e) => setsecretWord(e.target.value)}
+          ></input>
+          <button type="submit" onClick={giveSecretWord}>
+            Enter secret word
+          </button>
+        </>
+      )}
+      {!showMatchContact && roomData && roomData.gameMasterId !== socket.id && (
+        <>
+          <input
+            type="text"
+            placeholder="Enter clue"
+            value={contact.clue}
+            onChange={(e) => {
+              setContact((prevValue) => {
+                return {
+                  ...prevValue,
+                  clue: e.target.value,
+                };
+              });
+            }}
+          ></input>
+          <input
+            type="text"
+            placeholder="Enter the contact word"
+            value={contact.codeWord}
+            onChange={(e) => [
+              setContact((prevValue) => {
+                return {
+                  ...prevValue,
+                  codeWord: e.target.value,
+                };
+              }),
+            ]}
+          ></input>
+          <button
+            type="submit"
+            onClick={() => {
+              makeContact();
+            }}
+          >
+            Make Contact
+          </button>
+        </>
+      )}
+      {showMatchContact &&
+        gameData.currContactData &&
+        gameData.currContactData.madeBy !== socket.id && (
+          <>
             <input
               type="text"
               value={guess}
@@ -386,26 +394,31 @@ export default function GameSpace({ socket }) {
                 matchContact();
               }}
             >
-          {roomData && (roomData.gameMasterId !== socket.id?"Match Contact":"Break Contact")}
-        </button>
-      </>)}
-      {roomData && roomData.gameMasterId !== socket.id &&
-        (<>
-            <input
-              type="text"
-              onChange={(e) => {
-                setGameMasterWordGuess(e.target.value);
-              }}
-            ></input>
-            <button
-              type="submit"
-              onClick={() => {
-                guessWord();
-              }}
-            >
-          Guess Word
+              {roomData &&
+                (roomData.gameMasterId !== socket.id
+                  ? "Match Contact"
+                  : "Break Contact")}
             </button>
-        </>)}
           </>
+        )}
+      {roomData && roomData.gameMasterId !== socket.id && (
+        <>
+          <input
+            type="text"
+            onChange={(e) => {
+              setGameMasterWordGuess(e.target.value);
+            }}
+          ></input>
+          <button
+            type="submit"
+            onClick={() => {
+              guessWord();
+            }}
+          >
+            Guess Word
+          </button>
+        </>
+      )}
+    </>
   );
 }
