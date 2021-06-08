@@ -243,8 +243,8 @@ io.on("connection", (socket) => {
         contactWord: codeWord,
         clue: clue,
         thisContactTime: 10,
-        otherPlayerGuesses: [],
-        gameMasterGuesses: [],
+        otherPlayerGuesses: "",
+        gameMasterGuesses:"",
         playerName: playerNames[socket.id],
       };
       io.in(socketMapForPlayer[socket.id]).emit(
@@ -256,12 +256,11 @@ io.on("connection", (socket) => {
       //curr round is going on
     }
   });
-
-  socket.on("match-contact", (guess) => {
+  socket.on("match-contact", guess => {
     if (socket.id === activeRooms[socketMapForPlayer[socket.id]].gameMasterId) {
       activeGames[
         socketMapForPlayer[socket.id]
-      ].currContactData.gameMasterGuesses.push(guess);
+      ].currContactData.gameMasterGuesses=guess;
       let wasCorrect = false;
       if (
         guess ===
@@ -281,7 +280,15 @@ io.on("connection", (socket) => {
     } else {
       activeGames[
         socketMapForPlayer[socket.id]
-      ].currContactData.otherPlayerGuesses.push(guess);
+      ].currContactData.otherPlayerGuesses = guess;
+      console.log(activeGames[socketMapForPlayer[socket.id]].currContactData.otherPlayerGuesses);
+      io.in(socketMapForPlayer[socket.id]).emit("start-15-timer",playerNames[socket.id]);
+    }
+  })
+  socket.on("match-contact-direct", () => {
+    console.log(activeGames[socketMapForPlayer[socket.id]])
+    if (activeGames[socketMapForPlayer[socket.id]] && activeGames[socketMapForPlayer[socket.id]].currContactData) {
+      guess = activeGames[socketMapForPlayer[socket.id]].currContactData.otherPlayerGuesses;
       let wasCorrect = false;
       // console.log(guess,activeG);
       if (
@@ -290,6 +297,7 @@ io.on("connection", (socket) => {
       ) {
         wasCorrect = true;
       }
+      console.log(guess,wasCorrect,"plz say yes");
       io.in(socketMapForPlayer[socket.id]).emit(
         "make-contact-attempt",
         wasCorrect,
@@ -388,6 +396,9 @@ io.on("connection", (socket) => {
       );
       activeGames[socketMapForPlayer[socket.id]].currContactData = undefined;
     }
+  });
+  socket.on("reset-timer", () => {
+    io.in(socketMapForPlayer[socket.id]).emit("reset-timer-reply");
   })
 });
 instrument(io, {

@@ -49,6 +49,21 @@ export default function GameSpace({ socket }) {
     socket.emit("guess-word", gameMasterWordGuess);
   }
   useEffect(() => {
+    socket.on("start-15-timer", (name) => {
+      setChats((prevChats) => {
+        return [
+          ...prevChats,
+          `A guess has been made by ${name}, the gameMaster's time to guess has already started so hurry`,
+        ];
+      });
+      setTrigger15(true);
+      startTimer.current();
+    });
+    return () => {
+      socket.off("start-15-timer");
+    }
+  })
+  useEffect(() => {
     socket.on("contact-expired-reply", (contactWord) => {
       stopTimer.current();
       setshowMatchContact(false);
@@ -157,6 +172,7 @@ export default function GameSpace({ socket }) {
       (wasCorrect, guess, currContactData, gameMasterWord) => {
         if (wasCorrect) {
           stopTimer.current();
+          setTrigger15(false);
           setshowMatchContact(false);
           setChats((prevChats) => {
             return [
@@ -236,14 +252,26 @@ export default function GameSpace({ socket }) {
       socket.off("game-ended-back-to-WR");
     };
   });
-
+  useEffect(() => {
+    socket.on("reset-timer-reply", () => {
+      if (trigger15) {
+        setTrigger15(false);
+        stopTimer.current();
+        socket.emit("match-contact-direct");
+      }
+    });
+    return () => {
+      socket.off("reset-timer-reply");
+    }
+  })
   if (showWaiting && socket.id !== roomData.gameMasterId) {
     return (<h1>Waiting for GameMaster to enter the secret word</h1>);
   }
 
   return (
     <>
-      <Timer initialTime={4000} startImmediately={false} direction="backward"
+      <Timer initialTime={40000} startImmediately={false} direction="backward"
+        onStop={() => console.log('onStop hook')}
         checkpoints={[
         {
             time: 0,
@@ -254,7 +282,8 @@ export default function GameSpace({ socket }) {
         {
             time:25000 ,
             callback: () => {
-              
+              //end of 15 timer emit this to the server 
+              socket.emit("reset-timer");
             }
         }
     ]}
@@ -274,7 +303,10 @@ export default function GameSpace({ socket }) {
           <>
             {showTimer && (
               <div>
-                <Timer.Seconds />
+                {!trigger15 ?
+                  <Timer.Seconds /> :
+                  <Timer.Seconds formatValue={(value) => value - 25} />
+                }
               </div>
             )}
             </>
