@@ -26,12 +26,13 @@ let activeRooms = {};
 //     revealedWord:,
 //     guessedWords:,
 //     currContactData:{
-//       madeBy:,
-//       contactWord:,
-//       clue:,
-//       thisContactTime:,
-//       otherPlayerGuesses: [{name:,playerId:,guess:}],
-//       gameMasterGuesses: [],
+//     madeBy:,
+//     guessedBy:,
+//     contactWord:,
+//     clue:,
+//     thisContactTime:,
+//     otherPlayerGuesses: [{name:,playerId:,guess:}],
+//     gameMasterGuesses: [],
 //     }
 //   }
 // }
@@ -83,7 +84,7 @@ const removePlayer = async ({ playerId, socket }) => {
 };
 
 io.on("connection", (socket) => {
-  //   console.log(socket.id);
+  //   console.log(socket.id)
   socket.on("game-created", (gameVars) => {
     if (socketMapForPlayer[socket.id]) {
       removePlayer({ playerId: socket.id, socket: socket });
@@ -286,6 +287,7 @@ io.on("connection", (socket) => {
       activeGames[
         socketMapForPlayer[socket.id]
       ].currContactData.otherPlayerGuesses = guess;
+      activeGames[socketMapForPlayer[socket.id]].currContactData.guessedBy = playerNames[socket.id];
       console.log(
         activeGames[socketMapForPlayer[socket.id]].currContactData
           .otherPlayerGuesses
@@ -319,7 +321,7 @@ io.on("connection", (socket) => {
         wasCorrect,
         guess,
         activeGames[socketMapForPlayer[socket.id]].currContactData,
-        playerNames[socket.id],
+        activeGames[socketMapForPlayer[socket.id]].currContactData.guessedBy,
         activeGames[socketMapForPlayer[socket.id]].gameMasterWord
       );
       activeGames[socketMapForPlayer[socket.id]].currContactData = undefined;

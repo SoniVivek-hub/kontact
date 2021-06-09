@@ -159,7 +159,6 @@ export default function GameSpace({ socket }) {
       setDashes("");
       setSecretWordLength(0);
       setRevealedWord("");
-      alert(dashes);
       stopTimer();
       setShowWaiting(true);
       stopMainTimer.current();
@@ -195,8 +194,6 @@ export default function GameSpace({ socket }) {
               `The Game master successfully matched the contact word ${currContactData.contactWord}!`,
             ];
           });
-
-          // alert(revealed)
         } else {
           setChats((prevChats) => {
             return [
