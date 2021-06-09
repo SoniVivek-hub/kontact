@@ -7,7 +7,7 @@ import { io } from "socket.io-client";
 import {Route,BrowserRouter as Router,Link,Switch,Redirect,} from "react-router-dom"
 
 
-const socket = io.connect("http://localhost:5000");
+const socket = io.connect("/");
 
 function App() {
   return (

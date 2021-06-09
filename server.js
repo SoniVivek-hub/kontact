@@ -3,12 +3,17 @@ const bodyParser = require("body-parser");
 const { instrument } = require("@socket.io/admin-ui");
 const checkWord = require("check-word");
 const words = checkWord("en");
-const io = require("socket.io")(5000, {
-  cors: {
-    origin: ["http://localhost:3000", "https://admin.socket.io"],
-  },
-});
+// const io = require("socket.io")(5000, {
+//   cors: {
+//     origin: ["http://localhost:3000", "https://admin.socket.io"],
+//   },
+// });
+// const app = express();
 const app = express();
+const server = require('http').Server(app)
+const io = require('socket.io')(server);
+
+
 
 //this is the active rooms with all the details and the key as the roomCode
 
@@ -487,10 +492,13 @@ io.on("connection", (socket) => {
 instrument(io, {
   auth: false,
 });
-//app.get("/", (req, res) => {
-//res.send("working like a charm");
-// })
-// app.listen(5000, () => {
-//   console.log("server is listening on port 5000");
-// })
-// })
+const path = require("path");
+app.use(
+  express.static(path.join(__dirname, "./contact/build"))
+);
+app.get("*", function (req, res) {
+  res.sendFile(
+    path.join(__dirname, "./contact", "build", "index.html")
+  );
+});
+server.listen(process.env.PORT ||5000);

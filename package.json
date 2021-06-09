@@ -7,7 +7,9 @@
     "start": "node server.js",
     "devstart": "nodemon server.js",
     "client": "npm start --prefix contact",
-    "dev": "concurrently \"npm run devstart\" \"npm run client\""
+    "dev": "concurrently \"npm run devstart\" \"npm run client\"",
+    "create-pro": "npm run build --prefix contact",
+    "heroku-postbuild": "npm install --prefix contact && npm run create-pro"
   },
   "repository": {
     "type": "git",
