@@ -415,6 +415,72 @@ io.on("connection", (socket) => {
   socket.on("reset-timer", () => {
     io.in(socketMapForPlayer[socket.id]).emit("reset-timer-reply");
   });
+
+  socket.on("game-time-over", () => {
+    if (
+      activeRooms &&
+      activeRooms[socketMapForPlayer[socket.id]] &&
+      activeRooms[socketMapForPlayer[socket.id]].players &&
+      socket.id === activeRooms[socketMapForPlayer[socket.id]].players[0].id
+    ) {
+      io.in(socketMapForPlayer[socket.id]).emit(
+        "game-over",
+        null,
+        activeGames[socketMapForPlayer[socket.id]].gameMasterWord
+      );
+      //game over new roud start
+      activeGames[socketMapForPlayer[socket.id]] = {
+        ...activeGames[socketMapForPlayer[socket.id]],
+        gameMasterWord: "",
+        revealedWord: "",
+        currContactData: undefined,
+      };
+      let currGameMasterIndex;
+      activeRooms[socketMapForPlayer[socket.id]].players.map((player, key) => {
+        if (
+          activeRooms[socketMapForPlayer[socket.id]].gameMasterId === player.id
+        ) {
+          currGameMasterIndex = key;
+        }
+      });
+      console.log(currGameMasterIndex);
+      if (
+        activeRooms[socketMapForPlayer[socket.id]].gameMasterCount <
+        activeRooms[socketMapForPlayer[socket.id]].players.length
+      ) {
+        activeRooms[socketMapForPlayer[socket.id]].gameMasterCount++;
+        activeRooms[socketMapForPlayer[socket.id]].gameMasterId =
+          activeRooms[socketMapForPlayer[socket.id]].players[
+            (currGameMasterIndex + 1) %
+              activeRooms[socketMapForPlayer[socket.id]].players.length
+          ].id;
+        console.log(activeRooms[socketMapForPlayer[socket.id]].gameMasterId);
+        io.in(socketMapForPlayer[socket.id]).emit(
+          "next-game-started",
+          playerNames[activeRooms[socketMapForPlayer[socket.id]].gameMasterId]
+        );
+        io.in(socketMapForPlayer[socket.id]).emit(
+          "update-game-space",
+          activeGames[socketMapForPlayer[socket.id]]
+        );
+      } else {
+        //game over take to waiting room
+        activeRooms[socketMapForPlayer[socket.id]].gameStarted = false;
+        delete activeGames[socketMapForPlayer[socket.id]];
+        io.in(socketMapForPlayer[socket.id]).emit(
+          "players-update",
+          activeRooms[socketMapForPlayer[socket.id]]
+        );
+        io.in(socketMapForPlayer[socket.id]).emit(
+          "game-ended-back-to-WR",
+          activeRooms[socketMapForPlayer[socket.id]]
+        );
+      }
+    } else {
+      //ignore timer end
+      console.log("ignore call from timer");
+    }
+  });
 });
 instrument(io, {
   auth: false,
