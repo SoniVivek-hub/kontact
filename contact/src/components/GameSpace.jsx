@@ -160,6 +160,7 @@ export default function GameSpace({ socket }) {
       setSecretWordLength(0);
       setRevealedWord("");
       alert(dashes);
+      stopTimer();
       setShowWaiting(true);
       stopMainTimer.current();
     });
