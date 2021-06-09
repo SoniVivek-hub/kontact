@@ -100,7 +100,9 @@ io.on("connection", (socket) => {
     activeRooms[roomCode] = {
       roomCode: roomCode,
       gameMasterId: socket.id,
-      time: gameVars.time,
+      contactExpireTime: parseInt(gameVars.contactExpireTime),
+      gameTime: parseInt(gameVars.gameTime),
+      gameMasterGuessTime: parseInt(gameVars.gameMasterGuessTime),
       wordLength: gameVars.wordLength,
       gameStarted: false,
       checkDictionaryWords: gameVars.checkDictionaryWords,

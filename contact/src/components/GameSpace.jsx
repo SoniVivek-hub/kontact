@@ -117,6 +117,7 @@ export default function GameSpace({ socket }) {
         });
       }
       setGuess("");
+
       setGameMasterWordGuess("");
     });
     return () => {
@@ -277,39 +278,41 @@ export default function GameSpace({ socket }) {
 
   return (
     <>
-      <Timer
-        initialTime={360000}
-        direction="backward"
-        startImmediately={false}
-        checkpoints={[
-          {
-            time: 0,
-            callback: () => {
-              socket.emit("game-time-over");
+      {roomData.gameTime && (
+        <Timer
+          initialTime={roomData.gameTime * 60000}
+          direction="backward"
+          startImmediately={false}
+          checkpoints={[
+            {
+              time: 0,
+              callback: () => {
+                socket.emit("game-time-over");
+              },
             },
-          },
-        ]}
-      >
-        {({ start, stop, reset }) => {
-          startMainTimer.current = () => {
-            reset();
-            start();
-          };
-          return (
-            <>
-              <Timer.Minutes />:
-              <Timer.Seconds />
-            </>
-          );
-        }}
-      </Timer>
+          ]}
+        >
+          {({ start, stop, reset }) => {
+            startMainTimer.current = () => {
+              reset();
+              start();
+            };
+            return (
+              <>
+                <Timer.Minutes />:
+                <Timer.Seconds />
+              </>
+            );
+          }}
+        </Timer>
+      )}
 
       {showWaiting && socket.id !== roomData.gameMasterId ? (
         <h1>Waiting for GameMaster to enter the secret word</h1>
       ) : (
         <>
           <Timer
-            initialTime={40000}
+            initialTime={roomData.contactExpireTime * 1000}
             startImmediately={false}
             direction="backward"
             onStop={() => console.log("onStop hook")}
@@ -321,7 +324,9 @@ export default function GameSpace({ socket }) {
                 },
               },
               {
-                time: 25000,
+                time:
+                  (roomData.contactExpireTime - roomData.gameMasterGuessTime) *
+                  1000,
                 callback: () => {
                   //end of 15 timer emit this to the server
                   socket.emit("reset-timer");
@@ -347,7 +352,13 @@ export default function GameSpace({ socket }) {
                       {!trigger15 ? (
                         <Timer.Seconds />
                       ) : (
-                        <Timer.Seconds formatValue={(value) => value - 25} />
+                        <Timer.Seconds
+                          formatValue={(value) =>
+                            value -
+                            (roomData.contactExpireTime -
+                              roomData.gameMasterGuessTime)
+                          }
+                        />
                       )}
                     </div>
                   )}

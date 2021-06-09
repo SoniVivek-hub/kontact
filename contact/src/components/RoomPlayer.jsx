@@ -107,9 +107,18 @@ export default function RoomPlayer({ socket }) {
       {gameData.players && gameData.players[0].id !== socket.id ? (
         <button disabled>Waiting for host to start the game</button>
       ) : null}
-      {gameData.players && gameData.players[0].id === socket.id ? (
-        <button onClick={startGame}>Start game</button>
-      ) : null}
+      {gameData.players &&
+        gameData.players[0].id === socket.id &&
+        gameData.players.length >= 3 && (
+          <button onClick={startGame}>Start game</button>
+        )}
+      {gameData.players &&
+        gameData.players[0].id === socket.id &&
+        gameData.players.length < 3 && (
+          <button onClick={startGame} disabled>
+            Start game
+          </button>
+        )}
 
       {gameData.players && <button onClick={leaveRoom}>Leave Room</button>}
     </div>
