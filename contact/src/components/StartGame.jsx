@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
-import axios from "axios";
-import randomTypeOfName from "../typeOfNamesLink";
+import randomNames from "../names";
 
 export default function StartGame({ socket }) {
   let history = useHistory();
@@ -23,22 +22,10 @@ export default function StartGame({ socket }) {
     socket.emit("game-created", gameData);
     history.push("/roomplayer");
   }
-
-  useEffect(async () => {
-    axios
-      .get(
-        `http://names.drycodes.com/1?nameOptions=${
-          randomTypeOfName[Math.floor(Math.random() * randomTypeOfName.length)]
-        }&separator=space`
-      )
-      .then((response) => {
-        setName(response.data[0]);
-      })
-      .catch((err) => {
-        console.log(err);
-        console.log("couldn't get the name from api");
-      });
+  useEffect(() => {
+    setName(randomNames[Math.floor(Math.random() * randomNames.length)]);
   }, []);
+
   return (
     <div>
       <div>

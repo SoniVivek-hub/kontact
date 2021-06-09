@@ -6,8 +6,9 @@ export default function GameSpace({ socket }) {
   let stopTimer = useRef();
   let startTimer = useRef();
   let startMainTimer = useRef();
+  let stopMainTimer = useRef();
   let history = useHistory();
-  const [dashes, setDashes] = useState();
+  const [dashes, setDashes] = useState("");
   const [secretWord, setsecretWord] = useState("");
   const [revealedWord, setRevealedWord] = useState("");
   const [showWaiting, setShowWaiting] = useState(true);
@@ -155,7 +156,12 @@ export default function GameSpace({ socket }) {
       alert(`New game has started with ${gameMasterName} as the game master`);
       socket.emit("get-gameDataAndRoomData");
       setChats([]);
+      setDashes("");
+      setSecretWordLength(0);
+      setRevealedWord("");
+      alert(dashes);
       setShowWaiting(true);
+      stopMainTimer.current();
     });
     return () => {
       socket.off("next-game-started");
@@ -296,6 +302,10 @@ export default function GameSpace({ socket }) {
             startMainTimer.current = () => {
               reset();
               start();
+            };
+            stopMainTimer.current = () => {
+              reset();
+              stop();
             };
             return (
               <>
