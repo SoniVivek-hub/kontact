@@ -33,7 +33,7 @@ export default function StartGame({ socket }) {
           type="text"
           value={name}
           onChange={(e) => {
-            setName(e.target.value);
+            setName(e.target.value.toLowerCase());
           }}
         ></input>
       </div>
@@ -43,7 +43,7 @@ export default function StartGame({ socket }) {
           type="number"
           value={contactExpireTime}
           onChange={(e) => {
-            setContactExpireTime(e.target.value);
+            setContactExpireTime(e.target.value.toLowerCase());
           }}
         ></input>
         <label>Total length</label>
@@ -51,7 +51,7 @@ export default function StartGame({ socket }) {
           type="number"
           value={wordLength}
           onChange={(e) => {
-            setWordLength(e.target.value);
+            setWordLength(e.target.value.toLowerCase());
           }}
         ></input>
         <label>Enter gameMaster guess time</label>
@@ -59,7 +59,7 @@ export default function StartGame({ socket }) {
           type="number"
           value={gameMasterGuessTime}
           onChange={(e) => {
-            setGameMasterGuessTime(e.target.value);
+            setGameMasterGuessTime(e.target.value.toLowerCase());
           }}
         />
         <label>Enter the Game Time</label>
@@ -67,7 +67,7 @@ export default function StartGame({ socket }) {
           type="number"
           value={gameTime}
           onChange={(e) => {
-            setGameTime(e.target.value);
+            setGameTime(e.target.value.toLowerCase());
           }}
         />
       </div>

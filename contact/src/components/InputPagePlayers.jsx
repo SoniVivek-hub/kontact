@@ -24,14 +24,19 @@ export default function InputPagePlayers({ socket }) {
         type="text"
         value={name}
         onChange={(e) => {
-          setName(e.target.value);
+          setName(e.target.value.toLowerCase());
         }}
       ></input>
       <input
         type="text"
         value={roomCode}
         onChange={(e) => {
-          setRoomCode(e.target.value);
+          setRoomCode(e.target.value.toLowerCase());
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === "NumpadEnter") {
+            joinRoom();
+          }
         }}
       ></input>
       <button onClick={joinRoom}>Submit</button>

@@ -23,6 +23,8 @@ export default function GameSpace({ socket }) {
   const [showSecretWordInput, setshowSecretWordInput] = useState(true);
   const [secretWordLength, setSecretWordLength] = useState(0);
   const [trigger15, setTrigger15] = useState(false);
+  const contactWordInput = useRef();
+  const contactClueInput = useRef();
   function giveSecretWord() {
     setshowSecretWordInput(false);
     socket.emit("secret-word", secretWord.toLowerCase(), (msg) => {
@@ -52,10 +54,7 @@ export default function GameSpace({ socket }) {
   useEffect(() => {
     socket.on("start-15-timer", (name) => {
       setChats((prevChats) => {
-        return [
-          ...prevChats,
-          `A guess has been made by ${name}, the gameMaster's time to guess has already started so hurry`,
-        ];
+        return [...prevChats, `A guess has been made by ${name}, the gameMaster's time to guess has already started so hurry`];
       });
       setTrigger15(true);
       startTimer.current();
@@ -69,10 +68,7 @@ export default function GameSpace({ socket }) {
       stopTimer.current();
       setshowMatchContact(false);
       setChats((prevChats) => {
-        return [
-          ...prevChats,
-          `The contact word was ${contactWord}!, and time passed out and noone could guess it`,
-        ];
+        return [...prevChats, `The contact word was ${contactWord}!, and time passed out and noone could guess it`];
       });
     });
     return () => {
@@ -137,14 +133,9 @@ export default function GameSpace({ socket }) {
   });
   useEffect(() => {
     socket.on("game-over", (playerName, gameMasterWordGuess) => {
-      if (playerName)
-        alert(
-          `game over game master's word -"${gameMasterWordGuess}" has been guessed by ${playerName}`
-        );
+      if (playerName) alert(`game over game master's word -"${gameMasterWordGuess}" has been guessed by ${playerName}`);
       else {
-        alert(
-          `game over game master's word -"${gameMasterWordGuess}" was too good to be guessed}`
-        );
+        alert(`game over game master's word -"${gameMasterWordGuess}" was too good to be guessed}`);
       }
     });
     return () => {
@@ -159,7 +150,7 @@ export default function GameSpace({ socket }) {
       setDashes("");
       setSecretWordLength(0);
       setRevealedWord("");
-      stopTimer();
+      stopTimer.current();
       setShowWaiting(true);
       stopMainTimer.current();
     });
@@ -170,10 +161,7 @@ export default function GameSpace({ socket }) {
   useEffect(() => {
     socket.on("failed-guess", (playerName, gameMasterWordGuess) => {
       setChats((prevChats) => {
-        return [
-          ...prevChats,
-          `${playerName} failed to guess the secret word with ${gameMasterWordGuess}`,
-        ];
+        return [...prevChats, `${playerName} failed to guess the secret word with ${gameMasterWordGuess}`];
       });
     });
     return () => {
@@ -181,62 +169,44 @@ export default function GameSpace({ socket }) {
     };
   });
   useEffect(() => {
-    socket.on(
-      "break-contact-attempt",
-      (wasCorrect, guess, currContactData, gameMasterWord) => {
-        if (wasCorrect) {
-          stopTimer.current();
-          setTrigger15(false);
-          setshowMatchContact(false);
-          setChats((prevChats) => {
-            return [
-              ...prevChats,
-              `The Game master successfully matched the contact word ${currContactData.contactWord}!`,
-            ];
-          });
-        } else {
-          setChats((prevChats) => {
-            return [
-              ...prevChats,
-              `Game Master tried to match the contact with ${guess}`,
-            ];
-          });
-        }
+    socket.on("break-contact-attempt", (wasCorrect, guess, currContactData, gameMasterWord) => {
+      if (wasCorrect) {
+        stopTimer.current();
+        setTrigger15(false);
+        setshowMatchContact(false);
+        setChats((prevChats) => {
+          return [...prevChats, `The Game master successfully matched the contact word ${currContactData.contactWord}!`];
+        });
+      } else {
+        setChats((prevChats) => {
+          return [...prevChats, `Game Master tried to match the contact with ${guess}`];
+        });
       }
-    );
+    });
     return () => {
       socket.off("break-contact-attempt");
     };
   });
 
   useEffect(() => {
-    socket.on(
-      "make-contact-attempt",
-      (wasCorrect, guess, currContactData, name, gameMasterWord) => {
-        if (wasCorrect) {
-          stopTimer.current();
+    socket.on("make-contact-attempt", (wasCorrect, guess, currContactData, name, gameMasterWord) => {
+      if (wasCorrect) {
+        stopTimer.current();
+        setshowMatchContact(false);
+        setChats((prevChats) => {
+          return [...prevChats, `${name} successfully matched the contact word ${currContactData.contactWord}!`];
+        });
+        setRevealedWord(gameMasterWord.substring(0, revealedWord.length + 1));
+        setDashes(" _".repeat(secretWordLength - revealedWord.length));
+      } else {
+        setChats((prevChats) => {
           setshowMatchContact(false);
-          setChats((prevChats) => {
-            return [
-              ...prevChats,
-              `${name} successfully matched the contact word ${currContactData.contactWord}!`,
-            ];
-          });
-          setRevealedWord(gameMasterWord.substring(0, revealedWord.length + 1));
-          setDashes(" _".repeat(secretWordLength - revealedWord.length));
-        } else {
-          setChats((prevChats) => {
-            setshowMatchContact(false);
-            stopTimer.current();
-            socket.emit("get-gameDataAndRoomData");
-            return [
-              ...prevChats,
-              `${name} tried to match ${guess} with ${currContactData.contactWord}`,
-            ];
-          });
-        }
+          stopTimer.current();
+          socket.emit("get-gameDataAndRoomData");
+          return [...prevChats, `${name} tried to match ${guess} with ${currContactData.contactWord}`];
+        });
       }
-    );
+    });
     return () => {
       socket.off("make-contact-attempt");
     };
@@ -332,9 +302,7 @@ export default function GameSpace({ socket }) {
                 },
               },
               {
-                time:
-                  (roomData.contactExpireTime - roomData.gameMasterGuessTime) *
-                  1000,
+                time: (roomData.contactExpireTime - roomData.gameMasterGuessTime) * 1000,
                 callback: () => {
                   //end of 15 timer emit this to the server
                   socket.emit("reset-timer");
@@ -353,25 +321,7 @@ export default function GameSpace({ socket }) {
                 start();
                 setShowTimer(true);
               };
-              return (
-                <>
-                  {showTimer && (
-                    <div>
-                      {!trigger15 ? (
-                        <Timer.Seconds />
-                      ) : (
-                        <Timer.Seconds
-                          formatValue={(value) =>
-                            value -
-                            (roomData.contactExpireTime -
-                              roomData.gameMasterGuessTime)
-                          }
-                        />
-                      )}
-                    </div>
-                  )}
-                </>
-              );
+              return <>{showTimer && <div>{!trigger15 ? <Timer.Seconds /> : <Timer.Seconds formatValue={(value) => value - (roomData.contactExpireTime - roomData.gameMasterGuessTime)} />}</div>}</>;
             }}
           </Timer>
 
@@ -385,97 +335,145 @@ export default function GameSpace({ socket }) {
           <div>
             {revealedWord} {dashes}
           </div>
-          {showSecretWordInput &&
-            roomData &&
-            roomData.gameMasterId === socket.id && (
-              <>
-                <input
-                  type="text"
-                  value={secretWord}
-                  onChange={(e) => setsecretWord(e.target.value)}
-                ></input>
-                <button type="submit" onClick={giveSecretWord}>
-                  Enter secret word
-                </button>
-              </>
-            )}
-          {!showMatchContact &&
-            roomData &&
-            roomData.gameMasterId !== socket.id && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Enter clue"
-                  value={contact.clue}
-                  onChange={(e) => {
-                    setContact((prevValue) => {
-                      return {
-                        ...prevValue,
-                        clue: e.target.value,
-                      };
-                    });
-                  }}
-                ></input>
-                <input
-                  type="text"
-                  placeholder="Enter the contact word"
-                  value={contact.codeWord}
-                  onChange={(e) => [
-                    setContact((prevValue) => {
-                      return {
-                        ...prevValue,
-                        codeWord: e.target.value,
-                      };
-                    }),
-                  ]}
-                ></input>
-                <button
-                  type="submit"
-                  onClick={() => {
-                    makeContact();
-                  }}
-                >
-                  Make Contact
-                </button>
-              </>
-            )}
-          {showMatchContact &&
-            gameData.currContactData &&
-            gameData.currContactData.madeBy !== socket.id &&
-            (!trigger15 || socket.id === roomData.gameMasterId) && (
-              <>
-                <input
-                  type="text"
-                  value={guess}
-                  onChange={(e) => {
-                    setGuess(e.target.value);
-                  }}
-                ></input>
-                <button
-                  type="submit"
-                  onClick={() => {
-                    matchContact();
-                  }}
-                >
-                  {roomData &&
-                    (roomData.gameMasterId !== socket.id
-                      ? "Match Contact"
-                      : "Break Contact")}
-                </button>
-              </>
-            )}
-          {roomData && roomData.gameMasterId !== socket.id && (
+          {showSecretWordInput && roomData && roomData.gameMasterId === socket.id && (
             <>
               <input
                 type="text"
-                onChange={(e) => {
-                  setGameMasterWordGuess(e.target.value);
+                autoFocus
+                value={secretWord}
+                onChange={(e) => setsecretWord(e.target.value.toLowerCase())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === "NumpadEnter") {
+                    setsecretWord((prev) => prev.toLocaleLowerCase());
+                    giveSecretWord();
+                    setsecretWord("");
+                  }
                 }}
               ></input>
               <button
                 type="submit"
                 onClick={() => {
+                  setsecretWord((prev) => prev.toLocaleLowerCase());
+                  giveSecretWord();
+                  setsecretWord("");
+                }}
+              >
+                Enter secret word
+              </button>
+            </>
+          )}
+          {!showMatchContact && roomData && roomData.gameMasterId !== socket.id && (
+            <>
+              <input
+                type="text"
+                placeholder="Enter clue"
+                value={contact.clue}
+                ref={contactClueInput}
+                onChange={(e) => {
+                  setContact((prevValue) => {
+                    return {
+                      ...prevValue,
+                      clue: e.target.value.toLowerCase(),
+                    };
+                  });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === "NumpadEnter") {
+                    contactWordInput.current.focus();
+                  }
+                }}
+              ></input>
+              <input
+                type="text"
+                ref={contactWordInput}
+                placeholder="Enter the contact word"
+                value={contact.codeWord}
+                onChange={(e) => [
+                  setContact((prevValue) => {
+                    return {
+                      ...prevValue,
+                      codeWord: e.target.value.toLowerCase(),
+                    };
+                  }),
+                ]}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === "NumpadEnter") {
+                    if (contact.clue && contact.clue !== "") {
+                      setContact((prev) => {
+                        return { codeWord: prev.codeWord.toLocaleLowerCase(), clue: prev.clue.toLocaleLowerCase };
+                      });
+                      makeContact();
+                      setContact({ codeWord: "", clue: "" });
+                    } else {
+                      contactClueInput.current.focus();
+                    }
+                  }
+                }}
+              ></input>
+              <button
+                type="submit"
+                onClick={() => {
+                  setContact((prev) => {
+                    return { codeWord: prev.codeWord.toLocaleLowerCase(), clue: prev.clue.toLocaleLowerCase };
+                  });
+                  makeContact();
+                  setContact({ codeWord: "", clue: "" });
+                }}
+              >
+                Make Contact
+              </button>
+            </>
+          )}
+          {showMatchContact && gameData.currContactData && gameData.currContactData.madeBy !== socket.id && (!trigger15 || socket.id === roomData.gameMasterId) && (
+            <>
+              <input
+                type="text"
+                value={guess}
+                onChange={(e) => {
+                  setGuess(e.target.value.toLowerCase());
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === "NumpadEnter") {
+                    setGuess((prev) => prev.toLocaleLowerCase());
+                    matchContact();
+                    setGuess("");
+                  }
+                }}
+              ></input>
+              <button
+                type="submit"
+                onClick={() => {
+                  setGuess((prev) => prev.toLocaleLowerCase());
+                  matchContact();
+                  setGuess("");
+                }}
+              >
+                {roomData && (roomData.gameMasterId !== socket.id ? "Match Contact" : "Break Contact")}
+              </button>
+            </>
+          )}
+          {roomData && roomData.gameMasterId !== socket.id && (
+            <>
+              <input
+                type="text"
+                autoFocus
+                onChange={(e) => {
+                  setGameMasterWordGuess(e.target.value.toLowerCase());
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === "NumpadEnter") {
+                    setGameMasterWordGuess((prev) => prev.toLocaleLowerCase());
+                    guessWord();
+                    setGameMasterWordGuess("");
+                  }
+                }}
+              ></input>
+              <button
+                type="submit"
+                onClick={() => {
+                  setGameMasterWordGuess((prev) => prev.toLocaleLowerCase());
                   guessWord();
+                  setGameMasterWordGuess("");
                 }}
               >
                 Guess Word
