@@ -1,30 +1,59 @@
 import React, { useEffect, useState } from "react";
+import { useHistory } from "react-router-dom";
 
 export default function RoomPlayer({ socket }) {
+  let history = useHistory();
   const [gameData, setGameData] = useState({});
   useEffect(() => {
-    socket.once("game-hosted", (gameData) => {
-      console.log(gameData);
+    socket.on("game-hosted", (gameData) => {
       setGameData(gameData);
+    });
+    return () => {
+      socket.off("game-hosted");
+    };
+  });
+  useEffect(() => {
+    socket.on("players-update", (gameData) => {
+      setGameData(gameData);
+      return () => {
+        socket.off("players-update");
+      };
     });
   });
   useEffect(() => {
-    socket.once("players-update", (gameData) => {
-      console.log(gameData);
-      setGameData(gameData);
-    });
-  });
+    socket.emit("get-gameData");
+  }, []);
   useEffect(() => {
-    socket.once("player-is-kicked", () => {
+    socket.on("player-is-kicked", () => {
+      console.log("kicked bro");
       alert("you were kicked");
-      setGameData({});
+      history.push("/");
     });
+    return () => {
+      socket.off("player-is-kicked");
+    };
+  });
+  useEffect(() => {
+    socket.on("send-alert-for-game-started", () => {
+      alert("the host has started the game");
+      history.push("/gamespace");
+    });
+    return () => {
+      socket.off("send-alert-for-game-started");
+    };
+  });
+  useEffect(() => {
+    socket.on("clear-data", () => {
+      setGameData({});
+      history.push("/");
+    });
+    return () => {
+      socket.off("clear-data");
+    };
   });
   function leaveRoom() {
-    socket.emit("player-left", () => {
-      alert("left successfully");
-      setGameData({});
-    });
+    socket.emit("player-left");
+    history.push("/");
   }
   function kickPlayer(playerId) {
     socket.emit("kick-player", playerId);
@@ -33,7 +62,9 @@ export default function RoomPlayer({ socket }) {
   function makeGameMaster(playerId) {
     socket.emit("make-gamemaster", playerId);
   }
-
+  function startGame() {
+    socket.emit("start-game");
+  }
   return (
     <div>
       <h1>Room Code</h1>
@@ -73,8 +104,23 @@ export default function RoomPlayer({ socket }) {
             );
           })}
       </div>
-      <button>Waiting for host to start the game</button>
-      <button onClick={leaveRoom}>Leave Room</button>
+      {gameData.players && gameData.players[0].id !== socket.id ? (
+        <button disabled>Waiting for host to start the game</button>
+      ) : null}
+      {gameData.players &&
+        gameData.players[0].id === socket.id &&
+        gameData.players.length >= 3 && (
+          <button onClick={startGame}>Start game</button>
+        )}
+      {gameData.players &&
+        gameData.players[0].id === socket.id &&
+        gameData.players.length < 3 && (
+          <button onClick={startGame} disabled>
+            Start game
+          </button>
+        )}
+
+      {gameData.players && <button onClick={leaveRoom}>Leave Room</button>}
     </div>
   );
 }
