@@ -149,6 +149,7 @@ export default function GameSpace({ socket }) {
       setChats([]);
       setDashes("");
       setSecretWordLength(0);
+      setshowMatchContact(false);
       setRevealedWord("");
       stopTimer.current();
       setShowWaiting(true);
