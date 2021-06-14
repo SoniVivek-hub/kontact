@@ -148,6 +148,7 @@ export default function GameSpace({ socket }) {
       socket.emit("get-gameDataAndRoomData");
       setChats([]);
       setDashes("");
+      setshowMatchContact(false);
       setSecretWordLength(0);
       setshowMatchContact(false);
       setRevealedWord("");
